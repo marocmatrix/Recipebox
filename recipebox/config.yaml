@@ -1,5 +1,5 @@
 name: RecipeBox
-version: "1.3.4"
+version: "1.3.5"
 slug: recipebox
 description: Self-hosted recipe manager (EN/FR/AR) with step photos, timers, cook mode, shopping list & meal planning
 url: https://github.com/marocmatrix/recipe-addon

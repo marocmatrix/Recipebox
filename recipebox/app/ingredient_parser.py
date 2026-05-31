@@ -12,6 +12,9 @@ MULTI_UNITS = [
     "cuillère à café", "cuillères à café", "cuillere a cafe", "cuilleres a cafe",
     "cueillère à soupe", "cueillères à soupe", "cueillir à soupe", "cueillir a soupe",
     "cueillère à café", "cueillères à café", "cueillir à café", "cueillir a cafe",
+    # abbreviated forms: "c. à café", "c à café", "cc", "cs", "c. à s.", etc.
+    "c. à soupe", "c à soupe", "c. à s.", "c à s", "c.à.s", "c.a.s",
+    "c. à café", "c à café", "c. à c.", "c à c", "c.à.c", "c.a.c",
     "fluid ounce", "fluid ounces", "fl oz",
 ]
 

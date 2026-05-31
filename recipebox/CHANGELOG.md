@@ -73,3 +73,7 @@
 - Better French ingredient parsing: recognizes "cuillère à café/soupe" (and common misspellings), gousse, pincée, verre, sachet...
 - Strips connectors ("de", "d'", "of") so names come out clean (e.g. "oignon", "huile d'olive")
 - Existing recipes with mis-split ingredients are auto-corrected on update
+
+## 1.3.5
+- Recognize abbreviated French units: "c. à café", "c. à soupe" (and variants c à c, c.à.s, etc.)
+- Existing imported recipes with these units auto-correct on update
