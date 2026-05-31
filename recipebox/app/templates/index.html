@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+  <h1>{{ t('favorites') if fav else t('my_recipes') }}</h1>
+  <div class="spacer"></div>
+  <form method="get" action="{{ base }}/" class="search">
+    <input type="text" name="q" value="{{ q }}" placeholder="{{ t('search_recipes') }}">
+  </form>
+  <a class="btn" href="{{ base }}/new">+ {{ t('new') }}</a>
+</div>
+
+<div class="row" style="gap:8px;margin:4px 0 4px">
+  <a class="btn sm {{ 'gray' if fav }}" href="{{ base }}/">{{ t('all_recipes') }}</a>
+  <a class="btn sm {{ '' if fav else 'gray' }}" href="{{ base }}/?fav=1">★ {{ t('favorites') }}</a>
+</div>
+
+{% if recipes %}
+<div class="grid">
+  {% for r in recipes %}
+  <a class="card" href="{{ base }}/recipe/{{ r.id }}">
+    <div class="thumb" {% if r.image %}style="background-image:url('{{ base }}/uploads/{{ r.image }}')"{% endif %}>
+      {% if not r.image %}🍲{% endif %}
+      {% if r.favorite %}<span style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,.45);
+        color:#ffd34d;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;
+        justify-content:center;font-size:.9rem">★</span>{% endif %}
+    </div>
+    <div class="body">
+      <h3>{{ r.title }}</h3>
+      <div class="meta">
+        {% if r.cook_minutes or r.prep_minutes %}<span>⏱ {{ r.prep_minutes + r.cook_minutes }} {{ t('min') }}</span>{% endif %}
+        <span>🍽 {{ r.servings }} {{ t('servings_short') }}</span>
+      </div>
+      {% if r.tags %}<div>{% for tg in r.tags.split(',') %}{% if tg.strip() %}<span class="tag">{{ tg.strip() }}</span>{% endif %}{% endfor %}</div>{% endif %}
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty">
+  <div class="big">🥘</div>
+  <h2 style="margin-bottom:8px">{{ t('no_recipes') }}</h2>
+  <p>{{ t('create_or_import') }}</p>
+  <div class="row" style="justify-content:center;margin-top:18px">
+    <a class="btn" href="{{ base }}/new">+ {{ t('new_recipe') }}</a>
+    <a class="btn ghost" href="{{ base }}/import">{{ t('import_from_url') }}</a>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

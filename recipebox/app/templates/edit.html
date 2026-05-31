@@ -1,0 +1,317 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if r else 'New' }} recipe · RecipeBox{% endblock %}
+{% block content %}
+<div class="page-head"><h1>{{ t('edit_recipe') if r else t('new_recipe') }}</h1></div>
+
+<form method="post" action="{{ base }}/recipe/save" enctype="multipart/form-data">
+  {% if r %}<input type="hidden" name="rid" value="{{ r.id }}">{% endif %}
+
+  <div class="field">
+    <label>{{ t('title') }}</label>
+    <input type="text" name="title" required value="{{ r.title if r else '' }}">
+  </div>
+
+  <div class="row" style="gap:16px;align-items:flex-start">
+    <div class="field" style="flex:1"><label>{{ t('servings') }}</label>
+      <input type="number" name="servings" value="{{ r.servings if r else 4 }}"></div>
+    <div class="field" style="flex:1"><label>{{ t('prep_min') }}</label>
+      <input type="number" name="prep_minutes" value="{{ r.prep_minutes if r else 0 }}"></div>
+    <div class="field" style="flex:1"><label>{{ t('cook_min') }}</label>
+      <input type="number" name="cook_minutes" value="{{ r.cook_minutes if r else 0 }}"></div>
+  </div>
+
+  <div class="field"><label>{{ t('tags_csv') }}</label>
+    <input type="text" name="tags" value="{{ r.tags if r else '' }}" placeholder="dinner, moroccan, quick"></div>
+
+  <div class="row" style="gap:16px;align-items:flex-start">
+    <div class="field" style="flex:1"><label>{{ t('difficulty') }}</label>
+      <select name="difficulty">
+        <option value="" {{ 'selected' if not r or not r.difficulty }}>{{ t('diff_none') }}</option>
+        <option value="easy" {{ 'selected' if r and r.difficulty=='easy' }}>{{ t('diff_easy') }}</option>
+        <option value="medium" {{ 'selected' if r and r.difficulty=='medium' }}>{{ t('diff_medium') }}</option>
+        <option value="hard" {{ 'selected' if r and r.difficulty=='hard' }}>{{ t('diff_hard') }}</option>
+      </select></div>
+    <div class="field" style="flex:1"><label>{{ t('cuisine') }}</label>
+      <input type="text" name="cuisine" value="{{ r.cuisine if r else '' }}" placeholder="Moroccan, Italian…"></div>
+  </div>
+
+  <div class="field"><label>{{ t('description') }}</label>
+    <textarea name="description">{{ r.description if r else '' }}</textarea></div>
+
+  <div class="field"><label>{{ t('main_photo') }}</label>
+    {% if r and r.image %}<div style="margin-bottom:8px"><img src="{{ base }}/uploads/{{ r.image }}" style="height:90px;border-radius:10px"></div>{% endif %}
+    <input type="file" name="main_image" accept="image/*"></div>
+
+  <hr>
+  <h2 style="font-size:1.3rem;margin-bottom:14px">{{ t('ingredients') }}</h2>
+  <div id="ingredients">
+    {% if r %}{% for ing in r.ingredients %}
+    <div class="ing-row" style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+      <button type="button" class="ing-photo" title="{{ t('set_photo') }}" onclick="openPicker(this)">
+        <span class="thumb" {% if ing.image %}style="background-image:url('{{ img_url(ing.image) }}')"{% endif %}>{% if not ing.image %}📷{% endif %}</span>
+      </button>
+      <input type="hidden" data-ing-existing value="{{ ing.image }}">
+      <input type="hidden" data-ing-icon value="">
+      <input type="hidden" data-ing-url value="">
+      <input type="file" accept="image/*" data-ing-img hidden>
+      <input type="text" name="ingredient_qty" value="{{ ing.quantity }}" placeholder="{{ t('qty') }}" style="width:64px" inputmode="decimal">
+      <input type="text" name="ingredient_unit" value="{{ ing.unit }}" placeholder="{{ t('unit') }}" style="width:80px">
+      <input type="text" name="ingredient_name" value="{{ ing.name }}" placeholder="{{ t('ingredient_name') }}" style="flex:1">
+      <button type="button" class="cbtn-del" onclick="this.closest('.ing-row').remove();renumberIng()">✕</button>
+    </div>
+    {% endfor %}{% endif %}
+  </div>
+  <button type="button" class="btn gray sm" onclick="addIng()">+ {{ t('add_ingredient') }}</button>
+
+  <!-- Shared photo picker popover -->
+  <div id="picker-overlay" onclick="closePicker(event)">
+    <div class="picker" onclick="event.stopPropagation()">
+      <div class="picker-head">
+        <strong>{{ t('set_photo') }}</strong>
+        <button type="button" class="cbtn-del" onclick="closePicker()">✕</button>
+      </div>
+      <div id="suggested-wrap" style="display:none">
+        <div class="pill" style="margin:6px 0">{{ t('suggested') }}</div>
+        <div id="suggested-grid" class="icon-grid"></div>
+      </div>
+      <div class="pill" style="margin:10px 0 6px">{{ t('icon_library') }}</div>
+      <div id="icon-grid" class="icon-grid"></div>
+      <div id="no-icons" class="pill" style="display:none">{{ t('no_icons') }}</div>
+      <hr style="margin:14px 0">
+      <button type="button" class="btn gray sm" onclick="pickerUpload()">📁 {{ t('upload_photo') }}</button>
+      <div class="row" style="gap:6px;margin-top:10px">
+        <input type="text" id="picker-url" placeholder="{{ t('paste_url') }}" style="flex:1">
+        <button type="button" class="btn sm" onclick="pickerUrl()">{{ t('use_url') }}</button>
+      </div>
+      <button type="button" class="btn gray sm" style="margin-top:10px;color:#a33" onclick="pickerRemove()">{{ t('remove_photo') }}</button>
+    </div>
+  </div>
+
+  <hr>
+  <h2 style="font-size:1.3rem;margin-bottom:6px">{{ t('steps') }}</h2>
+  <p class="pill" style="margin-bottom:14px">{{ t('step_hint') }}</p>
+  <div id="steps">
+    {% if r %}{% for s in r.steps %}
+    <div class="step-edit" style="background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px">
+      <div class="row" style="align-items:flex-start;gap:10px">
+        <span class="num">{{ loop.index }}</span>
+        <textarea name="step_text" style="flex:1" placeholder="{{ t('describe_step') }}">{{ s.text }}</textarea>
+        <button type="button" class="cbtn-del" onclick="this.closest('.step-edit').remove();renumber()">✕</button>
+      </div>
+      <div class="row" style="gap:14px;margin-top:10px;flex-wrap:wrap">
+        <div><label class="pill">{{ t('timer_sec') }}</label>
+          <input type="number" name="step_timer" value="{{ s.timer_seconds }}" style="width:120px"></div>
+        <div><label class="pill">{{ t('photo') }}</label>
+          {% if s.image %}<div><img src="{{ base }}/uploads/{{ s.image }}" style="height:46px;border-radius:6px;margin-bottom:4px"></div>{% endif %}
+          <input type="file" accept="image/*" data-step-img></div>
+      </div>
+    </div>
+    {% endfor %}{% endif %}
+  </div>
+  <button type="button" class="btn gray sm" onclick="addStep()">+ {{ t('add_step') }}</button>
+
+  <hr>
+  <div class="row">
+    <button type="submit" class="btn">💾 {{ t('save_recipe') }}</button>
+    <a class="btn gray" href="{{ base }}/{% if r %}recipe/{{ r.id }}{% endif %}">{{ t('cancel') }}</a>
+  </div>
+</form>
+
+<style>
+.cbtn-del{background:#f3ebe0;border:none;border-radius:8px;width:38px;height:38px;
+  cursor:pointer;color:#a33;font-size:.9rem;flex-shrink:0}
+.cbtn-del:hover{background:#ecd9cc}
+.ing-photo{cursor:pointer;flex-shrink:0;background:none;border:none;padding:0}
+.ing-photo .thumb{width:42px;height:42px;border-radius:9px;border:1.5px solid var(--line);
+  background:#f3ebe0 center/cover;display:flex;align-items:center;justify-content:center;
+  font-size:1.1rem;color:var(--muted)}
+.ing-photo:hover .thumb{border-color:var(--accent)}
+#picker-overlay{display:none;position:fixed;inset:0;background:rgba(30,24,20,.45);
+  z-index:200;align-items:center;justify-content:center;padding:20px}
+#picker-overlay.open{display:flex}
+.picker{background:var(--card);border-radius:18px;padding:20px;max-width:420px;width:100%;
+  max-height:80vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.picker-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.icon-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(54px,1fr));gap:8px}
+.icon-grid button{aspect-ratio:1;border:1.5px solid var(--line);border-radius:10px;background:#fbf6ef;
+  cursor:pointer;padding:6px;display:flex;align-items:center;justify-content:center}
+.icon-grid button:hover{border-color:var(--accent)}
+.icon-grid img{max-width:100%;max-height:100%}
+.icon-grid .nm{font-size:.6rem;color:var(--muted);text-align:center}
+</style>
+
+<script>
+const ICONS = {{ icons | tojson }};
+const ICONS_BASE = "{{ base }}/icons/";
+const USER_ICONS_BASE = "{{ base }}/usericons/";
+function iconUrl(ic){ return (ic.source==='user'?USER_ICONS_BASE:ICONS_BASE)+ic.file; }
+function iconRef(ic){ return (ic.source==='user'?'usericon:':'icon:')+ic.file; }
+let activeRow = null;
+
+function setThumb(row, cssUrl){
+  const t=row.querySelector('.thumb');
+  if(cssUrl){ t.style.backgroundImage=`url('${cssUrl}')`; t.textContent=''; }
+  else { t.style.backgroundImage=''; t.textContent='📷'; }
+}
+function clearChoice(row){
+  // reset all sources; caller sets the chosen one
+  row.querySelector('[data-ing-existing]').value='';
+  row.querySelector('[data-ing-icon]').value='';
+  row.querySelector('[data-ing-url]').value='';
+  const f=row.querySelector('[data-ing-img]'); f.value='';
+}
+
+// ---- picker ----
+function openPicker(btn){
+  activeRow = btn.closest('.ing-row');
+  const text = (activeRow.querySelector('[name=ingredient_name]').value || '').toLowerCase();
+  // suggested = icons whose name appears in the ingredient text
+  const sugg = ICONS.filter(ic => text.includes(ic.name.toLowerCase().replace(/_/g,' '))
+                              || text.includes(ic.name.toLowerCase()));
+  const sg=document.getElementById('suggested-grid');
+  const sw=document.getElementById('suggested-wrap');
+  sg.innerHTML='';
+  if(sugg.length){ sw.style.display='block'; sugg.forEach(ic=>sg.appendChild(iconBtn(ic))); }
+  else sw.style.display='none';
+  // full grid
+  const grid=document.getElementById('icon-grid');
+  grid.innerHTML='';
+  if(ICONS.length){ document.getElementById('no-icons').style.display='none';
+    ICONS.forEach(ic=>grid.appendChild(iconBtn(ic))); }
+  else document.getElementById('no-icons').style.display='block';
+  document.getElementById('picker-url').value='';
+  document.getElementById('picker-overlay').classList.add('open');
+}
+function iconBtn(ic){
+  const b=document.createElement('button'); b.type='button';
+  b.innerHTML=`<img src="${iconUrl(ic)}" alt="${ic.name}">`;
+  b.title=ic.name;
+  b.onclick=()=>chooseIcon(ic);
+  return b;
+}
+function closePicker(e){
+  if(e && e.target!==document.getElementById('picker-overlay')) { /* overlay click */ }
+  document.getElementById('picker-overlay').classList.remove('open');
+  activeRow=null;
+}
+function chooseIcon(ic){
+  if(!activeRow) return;
+  clearChoice(activeRow);
+  activeRow.querySelector('[data-ing-icon]').value=iconRef(ic);
+  setThumb(activeRow, iconUrl(ic));
+  closePicker();
+}
+function pickerUpload(){
+  if(!activeRow) return;
+  activeRow.querySelector('[data-ing-img]').click();
+}
+function pickerUrl(){
+  if(!activeRow) return;
+  const u=document.getElementById('picker-url').value.trim();
+  if(!u) return;
+  clearChoice(activeRow);
+  activeRow.querySelector('[data-ing-url]').value=u;
+  setThumb(activeRow, u);
+  closePicker();
+}
+function pickerRemove(){
+  if(!activeRow) return;
+  clearChoice(activeRow);
+  setThumb(activeRow, '');
+  closePicker();
+}
+
+function wireIngPhoto(row){
+  const file=row.querySelector('[data-ing-img]');
+  file.addEventListener('change',()=>{
+    const f=file.files[0]; if(!f) return;
+    // upload chosen: clear icon/url so it takes priority
+    row.querySelector('[data-ing-icon]').value='';
+    row.querySelector('[data-ing-url]').value='';
+    row.querySelector('[data-ing-existing]').value='';
+    setThumb(row, URL.createObjectURL(f));
+  });
+  // Suggest a remembered photo when the name is typed (only if no image yet)
+  const nameInput=row.querySelector('[name=ingredient_name]');
+  if(nameInput){
+    nameInput.addEventListener('blur',()=>maybeSuggestImage(row));
+  }
+}
+function rowHasImage(row){
+  return !!(row.querySelector('[data-ing-existing]').value
+    || row.querySelector('[data-ing-icon]').value
+    || row.querySelector('[data-ing-url]').value
+    || (row.querySelector('[data-ing-img]').files||[]).length);
+}
+async function maybeSuggestImage(row){
+  if(rowHasImage(row)) return;
+  const name=(row.querySelector('[name=ingredient_name]').value||'').trim();
+  if(!name) return;
+  try{
+    const res=await fetch(`{{ base }}/api/ingredient-image?name=`+encodeURIComponent(name));
+    const data=await res.json();
+    if(data.found && !rowHasImage(row)){
+      // store as 'existing' so it's submitted, and show it
+      row.querySelector('[data-ing-existing]').value=data.ref||'';
+      setThumb(row, data.url);
+      // we need the stored ref, not the URL, for submission:
+      if(data.ref) row.querySelector('[data-ing-existing]').value=data.ref;
+    }
+  }catch(e){}
+}
+function addIng(){
+  const d=document.createElement('div'); d.className='ing-row';
+  d.style.cssText='display:flex;gap:8px;align-items:center;margin-bottom:8px';
+  d.innerHTML=`<button type="button" class="ing-photo" title="{{ t('set_photo') }}" onclick="openPicker(this)">
+      <span class="thumb">📷</span></button>
+    <input type="hidden" data-ing-existing value="">
+    <input type="hidden" data-ing-icon value="">
+    <input type="hidden" data-ing-url value="">
+    <input type="file" accept="image/*" data-ing-img hidden>
+    <input type="text" name="ingredient_qty" placeholder="{{ t('qty') }}" style="width:64px" inputmode="decimal">
+    <input type="text" name="ingredient_unit" placeholder="{{ t('unit') }}" style="width:80px">
+    <input type="text" name="ingredient_name" placeholder="{{ t('ingredient_name') }}" style="flex:1">
+    <button type="button" class="cbtn-del" onclick="this.closest('.ing-row').remove();renumberIng()">✕</button>`;
+  document.getElementById('ingredients').appendChild(d);
+  wireIngPhoto(d); renumberIng();
+}
+function renumberIng(){
+  document.querySelectorAll('#ingredients .ing-row').forEach((el,idx)=>{
+    el.querySelector('[data-ing-img]').name='ingredient_image_'+idx;
+    el.querySelector('[data-ing-existing]').name='ingredient_img_existing_'+idx;
+    el.querySelector('[data-ing-icon]').name='ingredient_icon_'+idx;
+    el.querySelector('[data-ing-url]').name='ingredient_url_'+idx;
+  });
+}
+function addStep(){
+  const wrap=document.getElementById('steps');
+  const d=document.createElement('div'); d.className='step-edit';
+  d.style.cssText='background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px';
+  d.innerHTML=`<div class="row" style="align-items:flex-start;gap:10px">
+      <span class="num"></span>
+      <textarea name="step_text" style="flex:1" placeholder="{{ t('describe_step') }}"></textarea>
+      <button type="button" class="cbtn-del" onclick="this.closest('.step-edit').remove();renumber()">✕</button>
+    </div>
+    <div class="row" style="gap:14px;margin-top:10px;flex-wrap:wrap">
+      <div><label class="pill">{{ t('timer_sec') }}</label>
+        <input type="number" name="step_timer" value="0" style="width:120px"></div>
+      <div><label class="pill">{{ t('photo') }}</label><br>
+        <input type="file" accept="image/*" data-step-img></div>
+    </div>`;
+  wrap.appendChild(d); renumber();
+}
+function renumber(){
+  document.querySelectorAll('#steps .step-edit').forEach((el,idx)=>{
+    el.querySelector('.num').textContent = idx+1;
+    const f = el.querySelector('[data-step-img]');
+    if (f) f.name = 'step_image_'+idx;
+  });
+}
+// init
+document.querySelectorAll('#ingredients .ing-row').forEach(wireIngPhoto);
+renumberIng();
+renumber();
+{% if not r %}addIng(); addStep();{% endif %}
+document.querySelector('form').addEventListener('submit',()=>{renumber();renumberIng();});
+</script>
+{% endblock %}

@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}Cooking · {{ r.title }}{% endblock %}
+{% block head %}
+<style>
+body{background:#1c1814;color:#f3ece2}
+.cook-wrap{max-width:760px;margin:0 auto;padding:24px 20px 40px;min-height:100vh;
+  display:flex;flex-direction:column}
+.cook-head{display:flex;align-items:center;gap:14px;margin-bottom:8px}
+.cook-head h1{font-size:1.3rem;color:#fff}
+.progress{height:6px;background:#3a3229;border-radius:999px;overflow:hidden;margin:16px 0 26px}
+.progress span{display:block;height:100%;background:var(--accent);transition:.4s}
+.step-card{flex:1;display:flex;flex-direction:column;justify-content:center;text-align:center}
+.step-num{color:var(--accent);font-family:'Fraunces';font-weight:700;letter-spacing:.08em;
+  text-transform:uppercase;font-size:.9rem;margin-bottom:18px}
+.step-img{width:100%;max-width:520px;margin:0 auto 26px;aspect-ratio:16/9;border-radius:18px;
+  background:#2a241e center/cover}
+.step-text{font-family:'Fraunces';font-size:1.7rem;line-height:1.35;max-width:580px;
+  margin:0 auto;color:#fbf6ef}
+.timer-box{margin:30px auto 0;background:#2a241e;border-radius:18px;padding:20px 26px;
+  display:inline-flex;flex-direction:column;align-items:center;gap:12px}
+.timer-display{font-family:'Fraunces';font-size:2.6rem;font-weight:700;color:#fff;
+  font-variant-numeric:tabular-nums}
+.timer-display.done{color:var(--accent);animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.4}}
+.controls{display:flex;gap:14px;justify-content:center;margin-top:34px;padding-top:24px;
+  border-top:1px solid #3a3229}
+.controls .btn{padding:14px 26px}
+.cbtn{background:#332c24;color:#f3ece2;border:none;padding:10px 18px;border-radius:999px;
+  font-family:'Jost';font-weight:600;cursor:pointer;font-size:.9rem}
+.cbtn:hover{background:#41382e}
+.exit{color:#9a8d7e;font-size:.9rem}
+nav.main,header.top{display:none}
+</style>
+{% endblock %}
+{% block content %}
+<div class="cook-wrap">
+  <div class="cook-head">
+    <a class="exit" href="{{ base }}/recipe/{{ r.id }}">✕ Exit</a>
+    <div class="spacer" style="flex:1"></div>
+    <h1>{{ r.title }}</h1>
+  </div>
+  <div class="progress"><span id="bar"></span></div>
+
+  <div class="step-card">
+    <div class="step-num" id="stepNum"></div>
+    <div class="step-img" id="stepImg" style="display:none"></div>
+    <div class="step-text" id="stepText"></div>
+    <div class="timer-box" id="timerBox" style="display:none">
+      <div class="timer-display" id="timerDisplay">00:00</div>
+      <div class="row" style="gap:10px">
+        <button class="cbtn" id="timerToggle">Start</button>
+        <button class="cbtn" id="timerReset">Reset</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="btn gray" id="prev">← Back</button>
+    <button class="btn" id="next">Next →</button>
+  </div>
+</div>
+
+<script>
+const STEPS = [
+  {% for s in r.steps %}
+  { text: {{ s.text|tojson }}, img: {{ (base ~ '/uploads/' ~ s.image) if s.image else '' |tojson }}, timer: {{ s.timer_seconds }} },
+  {% endfor %}
+];
+const UPLOAD_BASE = "{{ base }}/uploads/";
+let i = 0, t = null, remaining = 0, running = false;
+const $ = id => document.getElementById(id);
+
+// keep screen awake
+let wakeLock = null;
+async function keepAwake(){ try{ wakeLock = await navigator.wakeLock.request('screen'); }catch(e){} }
+keepAwake();
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') keepAwake(); });
+
+function fmt(s){ const m=Math.floor(s/60), x=s%60; return String(m).padStart(2,'0')+':'+String(x).padStart(2,'0'); }
+
+function render(){
+  const s = STEPS[i];
+  $('stepNum').textContent = `Step ${i+1} of ${STEPS.length}`;
+  $('stepText').textContent = s.text;
+  $('bar').style.width = ((i+1)/STEPS.length*100)+'%';
+  if (s.img){ $('stepImg').style.display='block'; $('stepImg').style.backgroundImage=`url('${s.img}')`; }
+  else $('stepImg').style.display='none';
+  // timer
+  stopTimer();
+  if (s.timer && s.timer>0){
+    $('timerBox').style.display='inline-flex';
+    remaining = s.timer; running=false;
+    $('timerDisplay').textContent = fmt(remaining);
+    $('timerDisplay').classList.remove('done');
+    $('timerToggle').textContent='Start';
+  } else $('timerBox').style.display='none';
+  $('prev').style.visibility = i===0 ? 'hidden':'visible';
+  $('next').textContent = i===STEPS.length-1 ? 'Done ✓' : 'Next →';
+}
+function stopTimer(){ if(t){clearInterval(t); t=null;} running=false; }
+function tick(){
+  remaining--; $('timerDisplay').textContent=fmt(Math.max(remaining,0));
+  if(remaining<=0){ stopTimer(); $('timerDisplay').classList.add('done'); $('timerToggle').textContent='Start';
+    try{new Audio('data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=').play();}catch(e){}
+    if(navigator.vibrate) navigator.vibrate([300,150,300]); }
+}
+$('timerToggle').onclick=()=>{ if(running){stopTimer();$('timerToggle').textContent='Start';}
+  else{ if(remaining<=0) return; running=true; t=setInterval(tick,1000); $('timerToggle').textContent='Pause'; } };
+$('timerReset').onclick=()=>{ stopTimer(); remaining=STEPS[i].timer; $('timerDisplay').textContent=fmt(remaining);
+  $('timerDisplay').classList.remove('done'); $('timerToggle').textContent='Start'; };
+$('next').onclick=()=>{ if(i<STEPS.length-1){i++;render();} else window.location.href="{{ base }}/recipe/{{ r.id }}"; };
+$('prev').onclick=()=>{ if(i>0){i--;render();} };
+document.addEventListener('keydown',e=>{ if(e.key==='ArrowRight')$('next').click(); if(e.key==='ArrowLeft')$('prev').click(); });
+render();
+</script>
+{% endblock %}

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RecipeBox</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Jost:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf6f0;--card:#fffdfa;--ink:#2b2622;--muted:#8a7f74;--accent:#c4561e;
+  --accent-deep:#9c3f12;--line:#ece3d8}
+*{box-sizing:border-box}
+body{margin:0;font-family:'Jost',sans-serif;background:radial-gradient(circle at 50% 0%,#fff 0%,var(--bg) 60%);
+  color:var(--ink);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.box{max-width:440px;width:100%;text-align:center}
+.logo{font-family:'Fraunces',serif;font-weight:700;font-size:2rem;margin-bottom:6px}
+.logo .dot{color:var(--accent)}
+h1{font-family:'Fraunces',serif;font-weight:600;font-size:1.5rem;margin:18px 0 6px}
+p{color:var(--muted);margin:0 0 26px}
+.langs{display:flex;flex-direction:column;gap:12px}
+.lang{display:flex;align-items:center;gap:14px;background:var(--card);border:1.5px solid var(--line);
+  border-radius:16px;padding:16px 20px;cursor:pointer;transition:.2s;text-align:start;width:100%;
+  font-family:'Jost';font-size:1.05rem}
+.lang:hover{border-color:var(--accent);transform:translateY(-2px)}
+.lang.sel{border-color:var(--accent);background:#fbeee6}
+.lang .flag{font-size:1.6rem;line-height:1}
+.lang .native{font-weight:600}
+.lang .sub{color:var(--muted);font-size:.82rem;margin-top:2px}
+.lang .grow{flex:1}
+.check{width:22px;height:22px;border-radius:50%;border:2px solid var(--line);flex-shrink:0}
+.lang.sel .check{background:var(--accent);border-color:var(--accent);
+  display:flex;align-items:center;justify-content:center;color:#fff;font-size:.8rem}
+.btn{margin-top:24px;width:100%;background:var(--accent);color:#fff;border:none;
+  padding:15px;border-radius:14px;font-family:'Jost';font-weight:600;font-size:1.05rem;cursor:pointer}
+.btn:hover{background:var(--accent-deep)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="logo"><span class="dot">●</span> RecipeBox</div>
+  <h1>Choose your language<br><span style="font-size:1.1rem;color:var(--muted)">Choisissez votre langue · اختر لغتك</span></h1>
+
+  <form method="post" action="{{ base }}/set-language" id="form">
+    <div class="langs">
+      <label class="lang" data-lang="en">
+        <span class="flag">🇬🇧</span>
+        <span class="grow"><span class="native">English</span><div class="sub">English</div></span>
+        <input type="radio" name="language" value="en" hidden>
+        <span class="check">✓</span>
+      </label>
+      <label class="lang" data-lang="fr">
+        <span class="flag">🇫🇷</span>
+        <span class="grow"><span class="native">Français</span><div class="sub">French</div></span>
+        <input type="radio" name="language" value="fr" hidden>
+        <span class="check">✓</span>
+      </label>
+      <label class="lang" data-lang="ar" dir="rtl">
+        <span class="flag">🇹🇳</span>
+        <span class="grow"><span class="native">العربية</span><div class="sub">Arabic</div></span>
+        <input type="radio" name="language" value="ar" hidden>
+        <span class="check">✓</span>
+      </label>
+    </div>
+    <button type="submit" class="btn" id="go" disabled>Continue · Continuer · متابعة</button>
+  </form>
+</div>
+<script>
+const labels=document.querySelectorAll('.lang');
+labels.forEach(l=>l.addEventListener('click',()=>{
+  labels.forEach(x=>x.classList.remove('sel'));
+  l.classList.add('sel');
+  l.querySelector('input').checked=true;
+  document.getElementById('go').disabled=false;
+}));
+</script>
+</body>
+</html>

@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}{{ r.title }} · RecipeBox{% endblock %}
+{% block content %}
+
+{% if r.image %}
+<div style="aspect-ratio:21/9;border-radius:var(--radius);margin-top:24px;
+  background:#efe7db url('{{ base }}/uploads/{{ r.image }}') center/cover;box-shadow:var(--shadow)"></div>
+{% endif %}
+
+<div class="page-head">
+  <h1>{{ r.title }}</h1>
+  <div class="spacer"></div>
+  <form method="post" action="{{ base }}/recipe/{{ r.id }}/favorite" style="display:inline">
+    <button class="btn sm {{ '' if r.favorite else 'gray' }}" type="submit"
+            title="{{ t('remove_favorite') if r.favorite else t('add_favorite') }}">
+      {{ '★' if r.favorite else '☆' }}
+    </button>
+  </form>
+  <a class="btn" href="{{ base }}/recipe/{{ r.id }}/cook">👨‍🍳 {{ t('cook_mode') }}</a>
+  <a class="btn gray sm" href="{{ base }}/recipe/{{ r.id }}/edit">{{ t('edit') }}</a>
+</div>
+
+<div class="meta" style="margin:6px 0 4px">
+  {% if r.prep_minutes %}<span>{{ t('prep') }} {{ r.prep_minutes }} {{ t('min') }}</span>{% endif %}
+  {% if r.cook_minutes %}<span>{{ t('cook') }} {{ r.cook_minutes }} {{ t('min') }}</span>{% endif %}
+  <span>{{ t('serves') }} {{ r.servings }}</span>
+  {% if r.cuisine %}<span>{{ t('cuisine') }}: {{ r.cuisine }}</span>{% endif %}
+  {% if r.difficulty %}<span>{{ t('difficulty') }}: {{ t('diff_' ~ r.difficulty) }}</span>{% endif %}
+  {% if r.source_url %}<span><a style="color:var(--accent)" href="{{ r.source_url }}" target="_blank">{{ t('source') }} ↗</a></span>{% endif %}
+</div>
+{% if r.tags %}<div>{% for tg in r.tags.split(',') %}{% if tg.strip() %}<span class="tag">{{ tg.strip() }}</span>{% endif %}{% endfor %}</div>{% endif %}
+{% if r.description %}<p style="color:var(--muted);margin-top:14px;max-width:680px">{{ r.description }}</p>{% endif %}
+
+<hr>
+
+<div style="display:grid;grid-template-columns:300px 1fr;gap:46px;align-items:start">
+  <!-- Ingredients -->
+  <div>
+    <div class="row" style="justify-content:space-between;margin-bottom:14px">
+      <h2 style="font-size:1.4rem">{{ t('ingredients') }}</h2>
+    </div>
+    <div class="row" style="gap:8px;margin-bottom:16px">
+      <span class="pill">{{ t('scale') }}</span>
+      {% for s,label in [(0.5,'½×'),(1,'1×'),(2,'2×'),(3,'3×')] %}
+        <a class="btn sm {% if scale==s %}{% else %}gray{% endif %}"
+           href="{{ base }}/recipe/{{ r.id }}?scale={{ s }}">{{ label }}</a>
+      {% endfor %}
+    </div>
+    <ul style="list-style:none;padding:0;margin:0">
+      {% for ing in r.ingredients %}
+      <li style="padding:9px 0;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px">
+        {% if ing.image %}<span style="width:34px;height:34px;border-radius:8px;flex-shrink:0;
+          background:#f3ebe0 url('{{ img_url(ing.image) }}') center/cover"></span>{% endif %}
+        <span>
+          {% if ing.name %}{% set q = scale_qty(ing.quantity, scale) %}<span style="font-weight:500">{{ q }}{% if q and ing.unit %} {% endif %}{{ ing.unit }}</span>{% if (q or ing.unit) %} {% endif %}{{ ing.name }}{% else %}{{ ing.text }}{% endif %}
+        </span>
+      </li>
+      {% endfor %}
+    </ul>
+    <form method="post" action="{{ base }}/recipe/{{ r.id }}/to-shopping" style="margin-top:18px">
+      <button class="btn ghost sm" type="submit">🛒 {{ t('add_all_shopping') }}</button>
+    </form>
+  </div>
+
+  <!-- Steps -->
+  <div>
+    <h2 style="font-size:1.4rem;margin-bottom:16px">{{ t('instructions') }}</h2>
+    {% for s in r.steps %}
+    <div class="list-row" style="margin-bottom:22px">
+      <div class="num">{{ loop.index }}</div>
+      <div style="flex:1">
+        {% if s.image %}
+        <div style="aspect-ratio:16/9;border-radius:12px;margin-bottom:10px;max-width:420px;
+          background:#efe7db url('{{ base }}/uploads/{{ s.image }}') center/cover"></div>
+        {% endif %}
+        <p style="margin:0">{{ s.text }}</p>
+        {% if s.timer_seconds %}
+        <span class="tag" style="margin-top:8px">⏱ {{ (s.timer_seconds//60) }} min{% if s.timer_seconds%60 %} {{ s.timer_seconds%60 }}s{% endif %}</span>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<hr>
+<form method="post" action="{{ base }}/recipe/{{ r.id }}/delete"
+      onsubmit="return confirm('{{ t('confirm_delete') }}')">
+  <button class="btn gray sm" type="submit" style="color:#a33">{{ t('delete_recipe') }}</button>
+</form>
+
+{% endblock %}

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}" dir="{{ dir }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{% block title %}RecipeBox{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Jost:wght@400;500;600&family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#faf6f0; --card:#fffdfa; --ink:#2b2622; --muted:#8a7f74;
+  --accent:#c4561e; --accent-deep:#9c3f12; --line:#ece3d8; --green:#5d7a4f;
+  --shadow:0 1px 2px rgba(43,38,34,.04),0 8px 24px rgba(43,38,34,.06);
+  --radius:16px;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:'Jost',sans-serif;background:var(--bg);color:var(--ink);
+  -webkit-font-smoothing:antialiased;line-height:1.55}
+a{color:inherit;text-decoration:none}
+h1,h2,h3{font-family:'Fraunces',serif;font-weight:600;line-height:1.1;margin:0}
+.wrap{max-width:1000px;margin:0 auto;padding:0 20px 80px}
+header.top{position:sticky;top:0;z-index:50;background:rgba(250,246,240,.85);
+  backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.topbar{max-width:1000px;margin:0 auto;display:flex;align-items:center;gap:18px;
+  padding:14px 20px}
+.brand{font-family:'Fraunces',serif;font-weight:700;font-size:1.35rem;
+  display:flex;align-items:center;gap:8px}
+.brand .dot{color:var(--accent)}
+nav.main{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
+nav.main a{padding:8px 14px;border-radius:999px;font-weight:500;font-size:.92rem;
+  color:var(--muted);transition:.2s}
+nav.main a:hover{background:var(--line);color:var(--ink)}
+.btn{display:inline-flex;align-items:center;gap:7px;background:var(--accent);
+  color:#fff;border:none;padding:11px 18px;border-radius:999px;font-family:'Jost';
+  font-weight:600;font-size:.95rem;cursor:pointer;transition:.2s}
+.btn:hover{background:var(--accent-deep)}
+.btn.ghost{background:transparent;color:var(--accent);border:1.5px solid var(--accent)}
+.btn.ghost:hover{background:var(--accent);color:#fff}
+.btn.sm{padding:7px 13px;font-size:.85rem}
+.btn.gray{background:var(--line);color:var(--ink)}
+.btn.gray:hover{background:#ddd2c4}
+.grid{display:grid;gap:22px;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+  margin-top:28px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  overflow:hidden;box-shadow:var(--shadow);transition:.25s;display:flex;flex-direction:column}
+.card:hover{transform:translateY(-3px);box-shadow:0 12px 32px rgba(43,38,34,.12)}
+.card .thumb{position:relative;aspect-ratio:4/3;background:#efe7db center/cover;display:flex;
+  align-items:center;justify-content:center;color:#c9bca c;font-size:2.4rem}
+.card .body{padding:14px 16px 18px}
+.card h3{font-size:1.18rem;margin-bottom:6px}
+.meta{color:var(--muted);font-size:.84rem;display:flex;gap:12px;flex-wrap:wrap}
+.tag{display:inline-block;background:#f3ebe0;color:var(--accent-deep);
+  padding:3px 10px;border-radius:999px;font-size:.74rem;margin:3px 4px 0 0;font-weight:500}
+.search{flex:1;max-width:280px}
+input[type=text],input[type=number],input[type=url],textarea,select{
+  width:100%;padding:11px 14px;border:1.5px solid var(--line);border-radius:12px;
+  font-family:'Jost';font-size:.95rem;background:var(--card);color:var(--ink)}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent)}
+textarea{resize:vertical;min-height:70px}
+label{font-weight:500;font-size:.88rem;display:block;margin:0 0 6px}
+.field{margin-bottom:18px}
+.page-head{display:flex;align-items:center;gap:16px;margin:30px 0 4px;flex-wrap:wrap}
+.page-head h1{font-size:2.1rem}
+.spacer{flex:1}
+.empty{text-align:center;padding:70px 20px;color:var(--muted)}
+.empty .big{font-size:3rem;margin-bottom:12px}
+.row{display:flex;gap:10px;align-items:center}
+.list-row{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px}
+.list-row .num{width:26px;height:26px;border-radius:50%;background:var(--accent);
+  color:#fff;display:flex;align-items:center;justify-content:center;font-size:.8rem;
+  font-weight:600;flex-shrink:0;margin-top:3px}
+.pill{font-size:.78rem;color:var(--muted)}
+hr{border:none;border-top:1px solid var(--line);margin:26px 0}
+.flash{background:#fbe9e1;border:1px solid #e9c3b2;color:var(--accent-deep);
+  padding:12px 16px;border-radius:12px;margin:18px 0}
+@media(max-width:560px){.page-head h1{font-size:1.6rem}.brand{font-size:1.15rem}}
+
+/* ---- RTL + Arabic typography ---- */
+html[dir="rtl"] body{font-family:'Cairo',sans-serif}
+html[dir="rtl"] h1,html[dir="rtl"] h2,html[dir="rtl"] h3{font-family:'Cairo',sans-serif;font-weight:700}
+html[dir="rtl"] nav.main{margin-left:0;margin-right:auto}
+html[dir="rtl"] .list-row .num{margin-top:3px}
+html[dir="rtl"] input,html[dir="rtl"] textarea,html[dir="rtl"] select{text-align:right}
+</style>
+{% block head %}{% endblock %}
+</head>
+<body>
+<header class="top">
+  <div class="topbar">
+    <a class="brand" href="{{ base }}/"><span class="dot">●</span> RecipeBox</a>
+    <nav class="main">
+      <a href="{{ base }}/">{{ t('recipes') }}</a>
+      <a href="{{ base }}/planner">{{ t('planner') }}</a>
+      <a href="{{ base }}/shopping">{{ t('shopping') }}</a>
+      <a href="{{ base }}/import">{{ t('import') }}</a>
+      <a href="{{ base }}/icons-manage">{{ t('manage_icons') }}</a>
+      <a href="{{ base }}/settings">{{ t('settings') }}</a>
+    </nav>
+  </div>
+</header>
+<div class="wrap">
+{% block content %}{% endblock %}
+</div>
+{% block scripts %}{% endblock %}
+</body>
+</html>

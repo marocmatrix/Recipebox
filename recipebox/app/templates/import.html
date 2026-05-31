@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}{{ t('import') }} · RecipeBox{% endblock %}
+{% block content %}
+<div class="page-head"><h1>{{ t('import_from_url') }}</h1></div>
+<p style="color:var(--muted);max-width:600px">{{ t('import_intro') }}</p>
+
+{% if error %}<div class="flash">⚠ {{ error }}</div>{% endif %}
+
+<form method="post" action="{{ base }}/import" style="max-width:600px;margin-top:18px">
+  <div class="field">
+    <label>{{ t('recipe_url') }}</label>
+    <input type="url" name="url" required placeholder="https://www.allrecipes.com/recipe/...">
+  </div>
+  <button class="btn" type="submit">{{ t('import_btn') }} →</button>
+</form>
+
+<div style="margin-top:30px;color:var(--muted);font-size:.9rem">
+  <strong>{{ t('reliable_sites') }}</strong> AllRecipes, Simply Recipes, Serious Eats,
+  BBC Good Food, The Mediterranean Dish. {{ t('sites_note') }}
+</div>
+{% endblock %}
