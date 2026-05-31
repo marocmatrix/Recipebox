@@ -76,6 +76,47 @@ def _upgrade_ingredient_structure():
         db.close()
 
 
+def _backfill_ingredient_images():
+    """Populate the image memory from ingredients that already have a photo,
+    then apply remembered photos to any existing ingredients that lack one.
+
+    This makes previously-set photos auto-apply across all existing recipes,
+    not just newly-saved ones. Icon-library picks are not auto-remembered.
+    """
+    db = SessionLocal()
+    try:
+        rows = (db.query(models.Ingredient)
+                .filter(models.Ingredient.image != "")
+                .filter(models.Ingredient.image.isnot(None))
+                .order_by(models.Ingredient.id).all())
+        # 1) build/refresh memory from photographed ingredients
+        for ing in rows:
+            nm = (ing.name or "").strip().lower()
+            img = ing.image or ""
+            if not nm or not img or img.startswith(("icon:", "usericon:")):
+                continue
+            rec = db.get(models.IngredientImage, nm)
+            if rec:
+                rec.image = img
+            else:
+                db.add(models.IngredientImage(name=nm, image=img))
+        db.flush()
+
+        # 2) apply remembered photos to ingredients that have none
+        memory = {m.name: m.image for m in db.query(models.IngredientImage).all()}
+        if memory:
+            blanks = (db.query(models.Ingredient)
+                      .filter((models.Ingredient.image == "")
+                              | (models.Ingredient.image.is_(None))).all())
+            for ing in blanks:
+                nm = (ing.name or "").strip().lower()
+                if nm in memory and memory[nm]:
+                    ing.image = memory[nm]
+        db.commit()
+    finally:
+        db.close()
+
+
 def get_setting(db: Session, key: str, default: str = "") -> str:
     s = db.get(models.Setting, key)
     return s.value if s else default
@@ -157,6 +198,8 @@ templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
 # One-time upgrade of any legacy free-text ingredients
 _upgrade_ingredient_structure()
+# Backfill image memory from already-photographed ingredients
+_backfill_ingredient_images()
 
 
 # ---- Ingress base-path handling -------------------------------------------

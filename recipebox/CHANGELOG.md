@@ -77,3 +77,11 @@
 ## 1.3.5
 - Recognize abbreviated French units: "c. à café", "c. à soupe" (and variants c à c, c.à.s, etc.)
 - Existing imported recipes with these units auto-correct on update
+
+## 1.3.6
+- Backfill ingredient image memory from existing recipes on update, so previously-set photos
+  (incl. ones set before the memory feature) auto-apply to new recipes
+
+## 1.3.7
+- Backfill now also fills remembered photos into existing recipes that were missing them
+  (applies across all old recipes on update, not just newly-saved ones)
