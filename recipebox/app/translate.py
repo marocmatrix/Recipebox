@@ -25,12 +25,12 @@ def _endpoint(key: str) -> str:
 def translate_debug(texts, target_lang, key, source_lang=None):
     """Like translate_batch but returns the raw DeepL response for diagnosis."""
     target = DEEPL_TARGET.get(target_lang, target_lang)
-    data = [("target_lang", target)]
+    data = {
+        "target_lang": target,
+        "text": [str(t) if t else " " for t in texts],
+    }
     if source_lang:
-        src = DEEPL_TARGET.get(source_lang, source_lang).split("-")[0]
-        data.append(("source_lang", src))
-    for t in texts:
-        data.append(("text", t if t else " "))
+        data["source_lang"] = DEEPL_TARGET.get(source_lang, source_lang).split("-")[0]
     try:
         resp = httpx.post(_endpoint(key), data=data,
                           headers={"Authorization": f"DeepL-Auth-Key {key}"},
@@ -56,12 +56,14 @@ def translate_batch(texts, target_lang, key, source_lang=None):
     target = DEEPL_TARGET.get(target_lang)
     if not target:
         return list(texts)
-    data = [("target_lang", target)]
+    # httpx encodes a dict whose value is a list as repeated form fields,
+    # which is exactly what DeepL expects for multiple 'text' params.
+    data = {
+        "target_lang": target,
+        "text": [str(t) if t else " " for t in texts],
+    }
     if source_lang:
-        src = DEEPL_TARGET.get(source_lang, source_lang).split("-")[0]
-        data.append(("source_lang", src))
-    for t in texts:
-        data.append(("text", t if t else " "))
+        data["source_lang"] = DEEPL_TARGET.get(source_lang, source_lang).split("-")[0]
     try:
         resp = httpx.post(_endpoint(key), data=data,
                           headers={"Authorization": f"DeepL-Auth-Key {key}"},
