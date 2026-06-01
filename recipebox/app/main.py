@@ -298,6 +298,41 @@ _upgrade_ingredient_structure()
 _backfill_ingredient_images()
 
 
+def _cleanup_encoded_text():
+    """Decode HTML entities in already-stored recipe text (one-time, idempotent)."""
+    from .scraper import decode_text
+    db = SessionLocal()
+    try:
+        changed = 0
+        for r in db.query(models.Recipe).all():
+            for field in ("title", "description"):
+                v = getattr(r, field) or ""
+                if "&" in v:
+                    nv = decode_text(v)
+                    if nv != v:
+                        setattr(r, field, nv); changed += 1
+        for ing in db.query(models.Ingredient).all():
+            for field in ("text", "name"):
+                v = getattr(ing, field) or ""
+                if "&" in v:
+                    nv = decode_text(v)
+                    if nv != v:
+                        setattr(ing, field, nv); changed += 1
+        for s in db.query(models.Step).all():
+            v = s.text or ""
+            if "&" in v:
+                nv = decode_text(v)
+                if nv != v:
+                    s.text = nv; changed += 1
+        if changed:
+            db.commit()
+    finally:
+        db.close()
+
+
+_cleanup_encoded_text()
+
+
 # ---- Ingress base-path handling -------------------------------------------
 # Home Assistant serves the add-on behind a path prefix. We read the
 # X-Ingress-Path header and expose it to templates so links work.
