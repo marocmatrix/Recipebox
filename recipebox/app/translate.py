@@ -22,6 +22,29 @@ def _endpoint(key: str) -> str:
     return "https://api.deepl.com/v2/translate"
 
 
+def translate_debug(texts, target_lang, key, source_lang=None):
+    """Like translate_batch but returns the raw DeepL response for diagnosis."""
+    target = DEEPL_TARGET.get(target_lang, target_lang)
+    data = [("target_lang", target)]
+    if source_lang:
+        src = DEEPL_TARGET.get(source_lang, source_lang).split("-")[0]
+        data.append(("source_lang", src))
+    for t in texts:
+        data.append(("text", t if t else " "))
+    try:
+        resp = httpx.post(_endpoint(key), data=data,
+                          headers={"Authorization": f"DeepL-Auth-Key {key}"},
+                          timeout=30.0)
+        return {
+            "endpoint": _endpoint(key),
+            "sent_target": target,
+            "status": resp.status_code,
+            "body": resp.text[:500],
+        }
+    except Exception as e:
+        return {"error": str(e), "endpoint": _endpoint(key), "sent_target": target}
+
+
 def translate_batch(texts, target_lang, key, source_lang=None):
     """Translate a list of strings to target_lang. Returns a list same length.
 
