@@ -16,6 +16,7 @@ from . import models, scraper
 from .i18n import LANGUAGES, make_translator
 from .ingredient_parser import (parse_ingredient, compose_text,
                                 quantity_to_float, format_quantity)
+from .ingredient_aliases import canonical_key, ALIASES
 
 Base.metadata.create_all(bind=engine)
 
@@ -102,16 +103,19 @@ def _backfill_ingredient_images():
                 db.add(models.IngredientImage(name=nm, image=img))
         db.flush()
 
-        # 2) apply remembered photos to ingredients that have none
+        # 2) apply photos to ingredients that have none:
+        #    library icon (by alias, any language) first, then remembered photo
         memory = {m.name: m.image for m in db.query(models.IngredientImage).all()}
-        if memory:
-            blanks = (db.query(models.Ingredient)
-                      .filter((models.Ingredient.image == "")
-                              | (models.Ingredient.image.is_(None))).all())
-            for ing in blanks:
-                nm = (ing.name or "").strip().lower()
-                if nm in memory and memory[nm]:
-                    ing.image = memory[nm]
+        blanks = (db.query(models.Ingredient)
+                  .filter((models.Ingredient.image == "")
+                          | (models.Ingredient.image.is_(None))).all())
+        for ing in blanks:
+            nm = (ing.name or "").strip().lower()
+            if not nm:
+                continue
+            ref = find_library_icon(nm) or memory.get(nm, "")
+            if ref:
+                ing.image = ref
         db.commit()
     finally:
         db.close()
@@ -187,6 +191,41 @@ def list_icons():
 def icon_ref(file: str, source: str) -> str:
     """Build the stored image reference for an icon."""
     return f"usericon:{file}" if source == "user" else f"icon:{file}"
+
+
+def find_library_icon(name: str) -> str:
+    """Find a library icon ref for an ingredient name via the alias map.
+
+    Returns an image ref ("usericon:x"/"icon:x") or "". User icons win over
+    built-in ones. Matches the icon's filename stem against the ingredient's
+    canonical key and all its language aliases.
+    """
+    if not name:
+        return ""
+    icons = list_icons()  # [{name, file, source}]
+    by_stem = {}
+    for ic in icons:
+        # user source overrides builtin for the same stem
+        if ic["name"].lower() not in by_stem or ic["source"] == "user":
+            by_stem[ic["name"].lower()] = ic
+
+    # candidate stems to try: canonical key + every alias of that key
+    key = canonical_key(name)
+    candidates = []
+    if key:
+        candidates.append(key)
+        for alias in ALIASES.get(key, []):
+            candidates.append(alias.strip().lower().replace("'", "_").replace(" ", "_"))
+            candidates.append(alias.strip().lower())
+    # also try the raw name and its simple slug
+    candidates.append(name.strip().lower())
+    candidates.append(name.strip().lower().replace(" ", "_"))
+
+    for cand in candidates:
+        ic = by_stem.get(cand)
+        if ic:
+            return icon_ref(ic["file"], ic["source"])
+    return ""
 
 
 app = FastAPI(title="RecipeBox")
@@ -439,10 +478,11 @@ async def save_recipe(
                     img = f"icon:{safe}"
                     chose_new = True
 
-        # Memory: if no image at all, try the remembered photo for this name.
-        # Only saved (uploaded/url) photos auto-apply — not icon-library matches.
+        # Auto-apply when no image was chosen:
+        #   1) a matching library icon (by name/alias, any language)
+        #   2) else a remembered uploaded/URL photo for this name
         if not img and nm:
-            img = recall_ingredient_image(db, nm)
+            img = find_library_icon(nm) or recall_ingredient_image(db, nm)
         # Remember an explicitly chosen upload/url photo for this name.
         # (Icons are a manual choice and are not remembered for auto-apply.)
         if chose_new and nm and img and not img.startswith(("icon:", "usericon:")):
@@ -737,8 +777,8 @@ def api_icons():
 
 @app.get("/api/ingredient-image")
 def api_ingredient_image(request: Request, name: str = "", db: Session = Depends(get_db)):
-    """Return the remembered photo for an ingredient name, as a resolvable URL."""
-    ref = recall_ingredient_image(db, name)
+    """Suggest a photo for an ingredient name: library icon (alias) first, then memory."""
+    ref = find_library_icon(name) or recall_ingredient_image(db, name)
     if not ref:
         return {"found": False}
     base = getattr(request.state, "base", "")

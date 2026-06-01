@@ -89,3 +89,10 @@
 ## 1.3.8
 - Add /api/debug-ingredients diagnostic (shows stored ingredient names/images + memory)
 - Fix: SVG images added by URL are now saved correctly (previously failed silently via Pillow)
+
+## 1.4.0
+- Cross-language ingredient icons: a multilingual alias map (FR/EN/AR) matches
+  e.g. "ail" / "garlic" / "ثوم" to the same icon, so imports from any-language sites match
+- Auto-apply priority: library icon (by alias) first, then remembered photo
+- Backfill and the "suggest while typing" lookup both use the alias map
+- ~45 common ingredients seeded; extend via app/ingredient_aliases.py
