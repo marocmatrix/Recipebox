@@ -841,6 +841,31 @@ def health():
     return {"status": "ok"}
 
 
+@app.get("/api/translate-test")
+def api_translate_test(db: Session = Depends(get_db)):
+    """Diagnose translation: is a key set, does it work, what does DeepL return."""
+    key = get_setting(db, "deepl_key", "")
+    out = {"key_set": bool(key), "key_suffix": key[-3:] if key else ""}
+    if not key:
+        out["error"] = "No DeepL key saved in Settings."
+        return out
+    ok, msg = deepl.verify_key(key)
+    out["key_valid"] = ok
+    out["verify_message"] = msg
+    # try a real sample translation to FR and AR
+    try:
+        fr = deepl.translate_batch(["Toss the shrimp with olive oil."], "fr", key, "en")
+        out["sample_fr"] = fr[0] if fr else None
+    except Exception as e:
+        out["sample_fr_error"] = str(e)
+    try:
+        ar = deepl.translate_batch(["Toss the shrimp with olive oil."], "ar", key, "en")
+        out["sample_ar"] = ar[0] if ar else None
+    except Exception as e:
+        out["sample_ar_error"] = str(e)
+    return out
+
+
 @app.post("/recipe/{rid}/translate")
 def translate_recipe_route(rid: int, request: Request, db: Session = Depends(get_db)):
     r = db.get(models.Recipe, rid)
