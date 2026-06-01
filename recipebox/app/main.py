@@ -863,6 +863,8 @@ def api_translate_test(db: Session = Depends(get_db)):
         out["sample_ar"] = ar[0] if ar else None
     except Exception as e:
         out["sample_ar_error"] = str(e)
+    # raw DeepL response for FR, to see exactly what the API says
+    out["raw_fr"] = deepl.translate_debug(["Toss the shrimp with olive oil."], "fr", key, "en")
     return out
 
 
