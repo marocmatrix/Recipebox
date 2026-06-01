@@ -16,7 +16,8 @@ from . import models, scraper
 from .i18n import LANGUAGES, make_translator
 from .ingredient_parser import (parse_ingredient, compose_text,
                                 quantity_to_float, format_quantity)
-from .ingredient_aliases import canonical_key, ALIASES
+from .ingredient_aliases import (canonical_key, ALIASES, display_name,
+                                 display_unit)
 from . import translate as deepl
 
 Base.metadata.create_all(bind=engine)
@@ -186,16 +187,41 @@ def translate_recipe(db: Session, recipe, key: str, source_lang: str = "en"):
         td = deepl.translate_batch([recipe.title or "", recipe.description or ""],
                                    lang, key, source_lang)
         rec_tr[lang] = {"title": td[0], "description": td[1]}
-        # ingredient names
-        if ing_names:
-            tr_names = deepl.translate_batch(ing_names, lang, key, source_lang)
-            for ing, tn in zip(recipe.ingredients, tr_names):
+
+        # --- ingredients: build a full translated line per ingredient ---
+        if recipe.ingredients:
+            # decide each ingredient's translated NAME: curated alias first, else DeepL
+            names_needing_deepl = []
+            idx_needing = []
+            curated = {}
+            for idx, ing in enumerate(recipe.ingredients):
+                ckey = canonical_key(ing.name or ing.text or "")
+                dn = display_name(ckey, lang) if ckey else ""
+                if dn:
+                    curated[idx] = dn
+                else:
+                    names_needing_deepl.append(ing.name or ing.text or "")
+                    idx_needing.append(idx)
+            deepl_names = {}
+            if names_needing_deepl:
+                tr = deepl.translate_batch(names_needing_deepl, lang, key, source_lang)
+                for j, idx in enumerate(idx_needing):
+                    deepl_names[idx] = tr[j] if j < len(tr) else names_needing_deepl[j]
+
+            for idx, ing in enumerate(recipe.ingredients):
+                tr_name = curated.get(idx) or deepl_names.get(idx) or (ing.name or ing.text or "")
+                tr_unit = display_unit(ing.unit or "", lang)
+                qty = (ing.quantity or "").strip()
+                # compose a full line; for Arabic keep numerals + RTL handles direction
+                parts = [p for p in [qty, tr_unit, tr_name] if p]
+                line = " ".join(parts)
                 try:
                     m = _json.loads(ing.name_translations) if ing.name_translations else {}
                 except Exception:
                     m = {}
-                m[lang] = tn
+                m[lang] = line
                 ing.name_translations = _json.dumps(m, ensure_ascii=False)
+
         # steps
         if step_texts:
             tr_steps = deepl.translate_batch(step_texts, lang, key, source_lang)
@@ -413,6 +439,35 @@ def ctx(request: Request, **kwargs):
             return orig
         return (m.get(lang) or {}).get(field) or orig
 
+    def loc_ingredient(ing, factor: float = 1.0) -> str:
+        """Full ingredient line for the current language.
+
+        For a translated language, use the stored full line (qty+unit+name),
+        scaling its leading quantity. Otherwise compose from qty/unit/name.
+        """
+        # translated full line for this language?
+        tline = ""
+        if ing.name_translations:
+            try:
+                tline = (_json.loads(ing.name_translations) or {}).get(lang, "")
+            except Exception:
+                tline = ""
+        if tline:
+            # scale the stored quantity in the line if present
+            if factor != 1 and ing.quantity:
+                sq = scale_qty(ing.quantity, factor)
+                # replace the original quantity token at the start if it matches
+                if tline.startswith(ing.quantity):
+                    tline = sq + tline[len(ing.quantity):]
+            return tline
+        # fallback: compose from structured fields (source language)
+        if ing.name:
+            q = scale_qty(ing.quantity, factor)
+            unit = ing.unit or ""
+            parts = [p for p in [q, unit, ing.name] if p]
+            return " ".join(parts)
+        return ing.text or ""
+
     return {
         "request": request,
         "base": base,
@@ -424,6 +479,7 @@ def ctx(request: Request, **kwargs):
         "scale_qty": scale_qty,
         "loc_text": loc_text,
         "loc_recipe": loc_recipe,
+        "loc_ingredient": loc_ingredient,
         **kwargs,
     }
 
