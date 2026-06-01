@@ -17,6 +17,7 @@ from .i18n import LANGUAGES, make_translator
 from .ingredient_parser import (parse_ingredient, compose_text,
                                 quantity_to_float, format_quantity)
 from .ingredient_aliases import canonical_key, ALIASES
+from . import translate as deepl
 
 Base.metadata.create_all(bind=engine)
 
@@ -41,6 +42,9 @@ _ensure_column("recipes", "difficulty", "difficulty VARCHAR DEFAULT ''")
 _ensure_column("recipes", "cuisine", "cuisine VARCHAR DEFAULT ''")
 _ensure_column("shopping_items", "category", "category VARCHAR DEFAULT ''")
 _ensure_column("shopping_items", "quantity", "quantity INTEGER DEFAULT 1")
+_ensure_column("steps", "translations", "translations TEXT DEFAULT ''")
+_ensure_column("ingredients", "name_translations", "name_translations TEXT DEFAULT ''")
+_ensure_column("recipes", "translations", "translations TEXT DEFAULT ''")
 
 
 def _upgrade_ingredient_structure():
@@ -153,6 +157,59 @@ def recall_ingredient_image(db: Session, name: str) -> str:
         return ""
     rec = db.get(models.IngredientImage, key)
     return rec.image if rec else ""
+
+
+import json as _json
+
+# UI languages we translate recipe content into (besides the source)
+CONTENT_LANGS = ["fr", "ar", "en"]
+
+
+def translate_recipe(db: Session, recipe, key: str, source_lang: str = "en"):
+    """Translate a recipe's title, description, ingredient names and steps into
+    all CONTENT_LANGS (except the source) and store as JSON on the rows."""
+    if not key:
+        return False
+    targets = [l for l in CONTENT_LANGS if l != source_lang]
+    # gather source strings
+    ing_names = [(i.name or i.text or "") for i in recipe.ingredients]
+    step_texts = [(s.text or "") for s in recipe.steps]
+
+    rec_tr = {}
+    try:
+        rec_tr = _json.loads(recipe.translations) if recipe.translations else {}
+    except Exception:
+        rec_tr = {}
+
+    for lang in targets:
+        # title + description
+        td = deepl.translate_batch([recipe.title or "", recipe.description or ""],
+                                   lang, key, source_lang)
+        rec_tr[lang] = {"title": td[0], "description": td[1]}
+        # ingredient names
+        if ing_names:
+            tr_names = deepl.translate_batch(ing_names, lang, key, source_lang)
+            for ing, tn in zip(recipe.ingredients, tr_names):
+                try:
+                    m = _json.loads(ing.name_translations) if ing.name_translations else {}
+                except Exception:
+                    m = {}
+                m[lang] = tn
+                ing.name_translations = _json.dumps(m, ensure_ascii=False)
+        # steps
+        if step_texts:
+            tr_steps = deepl.translate_batch(step_texts, lang, key, source_lang)
+            for stp, ts in zip(recipe.steps, tr_steps):
+                try:
+                    m = _json.loads(stp.translations) if stp.translations else {}
+                except Exception:
+                    m = {}
+                m[lang] = ts
+                stp.translations = _json.dumps(m, ensure_ascii=False)
+
+    recipe.translations = _json.dumps(rec_tr, ensure_ascii=False)
+    db.commit()
+    return True
 
 BASE_DIR = os.path.dirname(__file__)
 UPLOAD_DIR = os.path.join(DATA_DIR, "uploads")
@@ -299,6 +356,28 @@ def ctx(request: Request, **kwargs):
             return quantity
         return format_quantity(val * factor)
 
+    def loc_text(obj_translations: str, fallback: str) -> str:
+        """Return translation for current lang from a JSON string, else fallback."""
+        if not obj_translations:
+            return fallback
+        try:
+            m = _json.loads(obj_translations)
+        except Exception:
+            return fallback
+        val = m.get(lang)
+        return val if val else fallback
+
+    def loc_recipe(recipe, field: str) -> str:
+        """title/description in current language, else original."""
+        orig = getattr(recipe, field, "") or ""
+        if not recipe.translations:
+            return orig
+        try:
+            m = _json.loads(recipe.translations)
+        except Exception:
+            return orig
+        return (m.get(lang) or {}).get(field) or orig
+
     return {
         "request": request,
         "base": base,
@@ -308,6 +387,8 @@ def ctx(request: Request, **kwargs):
         "t": make_translator(lang),
         "img_url": img_url,
         "scale_qty": scale_qty,
+        "loc_text": loc_text,
+        "loc_recipe": loc_recipe,
         **kwargs,
     }
 
@@ -557,6 +638,14 @@ async def import_url(request: Request, url: str = Form(...), db: Session = Depen
     for i, txt in enumerate(data["steps"]):
         db.add(models.Step(recipe_id=r.id, position=i, text=txt))
     db.commit()
+    # Auto-translate into all languages if a DeepL key is configured.
+    key = get_setting(db, "deepl_key", "")
+    if key:
+        db.refresh(r)
+        try:
+            translate_recipe(db, r, key, source_lang="en")
+        except Exception:
+            pass
     base = getattr(request.state, "base", "")
     return RedirectResponse(f"{base}/recipe/{r.id}/edit", status_code=303)
 
@@ -715,6 +804,21 @@ def planner_delete(pid: int, request: Request, db: Session = Depends(get_db)):
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.post("/recipe/{rid}/translate")
+def translate_recipe_route(rid: int, request: Request, db: Session = Depends(get_db)):
+    r = db.get(models.Recipe, rid)
+    base = getattr(request.state, "base", "")
+    if not r:
+        return RedirectResponse(f"{base}/", status_code=303)
+    key = get_setting(db, "deepl_key", "")
+    if key:
+        try:
+            translate_recipe(db, r, key, source_lang="en")
+        except Exception:
+            pass
+    return RedirectResponse(f"{base}/recipe/{rid}", status_code=303)
 
 
 @app.post("/recipe/{rid}/favorite")
@@ -999,15 +1103,23 @@ def set_language(request: Request, language: str = Form(...), db: Session = Depe
 
 
 @app.get("/settings", response_class=HTMLResponse)
-def settings_page(request: Request, saved: int = 0):
-    return templates.TemplateResponse("settings.html", ctx(request, saved=bool(saved)))
+def settings_page(request: Request, saved: int = 0, db: Session = Depends(get_db)):
+    deepl_key = get_setting(db, "deepl_key", "")
+    # show only a masked hint that a key is set
+    has_key = bool(deepl_key)
+    return templates.TemplateResponse(
+        "settings.html", ctx(request, saved=bool(saved), has_key=has_key))
 
 
 @app.post("/settings")
-def settings_save(request: Request, language: str = Form(...), db: Session = Depends(get_db)):
+def settings_save(request: Request, language: str = Form(...),
+                  deepl_key: str = Form(""), db: Session = Depends(get_db)):
     if language not in LANGUAGES:
         language = "en"
     set_setting(db, "language", language)
+    # only overwrite the key if a new value was entered (so it isn't wiped)
+    if deepl_key.strip():
+        set_setting(db, "deepl_key", deepl_key.strip())
     base = getattr(request.state, "base", "")
     return RedirectResponse(f"{base}/settings?saved=1", status_code=303)
 
