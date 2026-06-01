@@ -102,3 +102,9 @@
 - "Fetch by name" for one ingredient, plus "Auto-fetch all missing" for the whole library
 - Uses the alias map so French/Arabic names (ail, ثوم) are queried in English (garlic)
 - Fetched photos saved to /data and applied to matching ingredients automatically
+
+## 1.6.0
+- Recipe content translation (title, description, ingredients, steps) via DeepL
+- Add your DeepL API key in Settings; imported recipes auto-translate into FR/EN/AR
+- "Translate" button on each recipe for ones added before the key was set
+- Switching UI language now also switches recipe content (stored, instant; falls back to original)
