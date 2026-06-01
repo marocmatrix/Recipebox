@@ -161,6 +161,10 @@ TRANSLATIONS = {
     "autofill_missing":{"en": "Auto-fetch all missing ingredient photos", "fr": "Récupérer automatiquement toutes les photos manquantes", "ar": "جلب كل الصور الناقصة تلقائيًا"},
     "fetch_source":    {"en": "Real photos from TheMealDB (free).", "fr": "Vraies photos depuis TheMealDB (gratuit).", "ar": "صور حقيقية من TheMealDB (مجاني)."},
     "fetched_n":       {"en": "Fetched {n} new photo(s).", "fr": "{n} nouvelle(s) photo(s) récupérée(s).", "ar": "تم جلب {n} صورة جديدة."},
+    "deepl_key":       {"en": "DeepL API key (for recipe translation)", "fr": "Clé API DeepL (traduction des recettes)", "ar": "مفتاح DeepL API (لترجمة الوصفات)"},
+    "deepl_set":       {"en": "A key is saved. Enter a new one to replace it.", "fr": "Une clé est enregistrée. Saisissez-en une nouvelle pour la remplacer.", "ar": "تم حفظ مفتاح. أدخل مفتاحًا جديدًا لاستبداله."},
+    "translate":       {"en": "Translate", "fr": "Traduire", "ar": "ترجم"},
+    "translate_recipe":{"en": "Translate this recipe", "fr": "Traduire cette recette", "ar": "ترجمة هذه الوصفة"},
 }
 
 

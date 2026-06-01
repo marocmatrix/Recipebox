@@ -20,6 +20,7 @@ class Recipe(Base):
     favorite = Column(Boolean, default=False)
     difficulty = Column(String, default="")     # easy / medium / hard
     cuisine = Column(String, default="")
+    translations = Column(Text, default="")     # JSON {"fr":{"title":..,"description":..}, "ar":{...}}
     created_at = Column(DateTime, default=datetime.utcnow)
 
     ingredients = relationship(
@@ -41,6 +42,7 @@ class Ingredient(Base):
     quantity = Column(String, default="")       # kept as string to allow "1/2", "2-3"
     unit = Column(String, default="")           # g, ml, tbsp, cup...
     name = Column(String, default="")           # flour, salt...
+    name_translations = Column(Text, default="")  # JSON {"fr": "...", "ar": "..."} for name
     image = Column(String, default="")          # per-ingredient photo filename
     recipe = relationship("Recipe", back_populates="ingredients")
 
@@ -51,6 +53,7 @@ class Step(Base):
     recipe_id = Column(Integer, ForeignKey("recipes.id"))
     position = Column(Integer, default=0)
     text = Column(Text, nullable=False)
+    translations = Column(Text, default="")     # JSON {"fr": "...", "ar": "..."}
     image = Column(String, default="")          # per-step photo filename
     timer_seconds = Column(Integer, default=0)  # 0 = no timer
     recipe = relationship("Recipe", back_populates="steps")
