@@ -108,3 +108,31 @@
 - Add your DeepL API key in Settings; imported recipes auto-translate into FR/EN/AR
 - "Translate" button on each recipe for ones added before the key was set
 - Switching UI language now also switches recipe content (stored, instant; falls back to original)
+
+## 1.6.4
+- Fix translation: corrected DeepL request encoding (multiple text fields) that caused
+  a silent local error and made translations return the original text unchanged
+
+## 1.6.5
+- Ingredient translation now translates the FULL line (quantity + unit + name), consistent per language
+- Curated correct words for known ingredients (ail→ثوم, oignon→بصل) instead of DeepL transliteration
+- Units are translated too (gousse→فص, c. à soupe→ملعقة كبيرة, g→غ, etc.)
+- Unknown ingredients still fall back to DeepL on the full name
+
+## 1.6.6
+- Arabic units use fuller words: جرام (g), كيلوجرام (kg), لتر (l)
+
+## 1.6.7
+- More curated ingredients (tuna→تونة, corn→ذرة, peas, mushroom, olive, almond...) so DeepL no longer transliterates them
+- "boîte/can", slice, glass, packet, bunch units translated; boîte now parsed as a unit
+- Existing "boîte de X" ingredients auto-resplit on update
+
+## 1.6.8
+- Auto-detect each recipe's source language (FR/EN/AR) and tell DeepL explicitly,
+  fixing transliteration of French terms (e.g. "galette de pomme de terre")
+- Added galette de pomme de terre to curated terms
+
+## 1.7.0
+- New "What can I cook?" page: list ingredients you have, get your recipes ranked by fewest missing
+- Cross-language matching via the alias map (ail/garlic/ثوم all match); shows what's missing
+- Tap-to-add ingredient chips from your own recipes
