@@ -65,3 +65,13 @@ When you set an uploaded or URL photo for an ingredient (e.g. "onion"), RecipeBo
 remembers it by name. The next time you add "onion" to any recipe, that photo is
 suggested as you type and applied automatically on save if you don't pick another.
 Icon-library choices are not auto-remembered (they remain a manual pick).
+
+## Fetching real ingredient photos
+On the Ingredient Icons page you can pull real photos from TheMealDB (free):
+- "Fetch a photo by ingredient name" — type e.g. "ail" / "garlic" / "ثوم" and it
+  fetches a real garlic photo (names are matched to English via the alias map).
+- "Auto-fetch all missing" — scans your recipes and fetches a photo for every
+  ingredient that doesn't already have an icon, then applies them.
+Fetched images are stored in /data and persist across updates. Requires the add-on
+to have internet access on your device. Not every ingredient exists in TheMealDB;
+those are simply skipped and you can upload your own.

@@ -156,6 +156,11 @@ TRANSLATIONS = {
     "unit":            {"en": "Unit", "fr": "Unité", "ar": "وحدة"},
     "ingredient_name": {"en": "Ingredient", "fr": "Ingrédient", "ar": "المكون"},
     "or":              {"en": "or", "fr": "ou", "ar": "أو"},
+    "fetch_photo":     {"en": "Fetch real photo", "fr": "Récupérer une vraie photo", "ar": "جلب صورة حقيقية"},
+    "fetch_by_name":   {"en": "Fetch a photo by ingredient name", "fr": "Récupérer une photo par nom d'ingrédient", "ar": "جلب صورة حسب اسم المكون"},
+    "autofill_missing":{"en": "Auto-fetch all missing ingredient photos", "fr": "Récupérer automatiquement toutes les photos manquantes", "ar": "جلب كل الصور الناقصة تلقائيًا"},
+    "fetch_source":    {"en": "Real photos from TheMealDB (free).", "fr": "Vraies photos depuis TheMealDB (gratuit).", "ar": "صور حقيقية من TheMealDB (مجاني)."},
+    "fetched_n":       {"en": "Fetched {n} new photo(s).", "fr": "{n} nouvelle(s) photo(s) récupérée(s).", "ar": "تم جلب {n} صورة جديدة."},
 }
 
 

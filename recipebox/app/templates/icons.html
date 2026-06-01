@@ -22,6 +22,20 @@
   <button class="btn" type="submit">+ {{ t('add_icon') }}</button>
 </form>
 
+<div class="card" style="padding:18px;max-width:560px;margin:0 0 24px">
+  <div class="pill" style="margin-bottom:10px">🖼 {{ t('fetch_source') }}</div>
+  {% if fetched is defined and fetched >= 0 %}
+  <div class="flash">✓ {{ t('fetched_n').replace('{n}', fetched|string) }}</div>
+  {% endif %}
+  <form method="post" action="{{ base }}/icons-manage/fetch" class="row" style="margin-bottom:12px">
+    <input type="text" name="name" placeholder="{{ t('fetch_by_name') }}" required>
+    <button class="btn" type="submit">{{ t('fetch_photo') }}</button>
+  </form>
+  <form method="post" action="{{ base }}/icons-manage/autofill">
+    <button class="btn ghost" type="submit">⚡ {{ t('autofill_missing') }}</button>
+  </form>
+</div>
+
 {% set user_icons = icons | selectattr('source','equalto','user') | list %}
 {% set builtin_icons = icons | selectattr('source','equalto','builtin') | list %}
 

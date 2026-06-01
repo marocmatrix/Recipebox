@@ -808,9 +808,9 @@ def _safe_icon_name(name: str, original_filename: str) -> str:
 
 
 @app.get("/icons-manage", response_class=HTMLResponse)
-def icons_manage(request: Request):
+def icons_manage(request: Request, fetched: int = -1):
     return templates.TemplateResponse(
-        "icons.html", ctx(request, icons=list_icons()))
+        "icons.html", ctx(request, icons=list_icons(), fetched=fetched))
 
 
 @app.post("/icons-manage/upload")
@@ -872,6 +872,114 @@ def icons_delete(request: Request, file: str = Form(...)):
         os.remove(path)
     base = getattr(request.state, "base", "")
     return RedirectResponse(f"{base}/icons-manage", status_code=303)
+
+
+# ----- Real ingredient photos from TheMealDB (free, no key) -----
+MEALDB_IMG = "https://www.themealdb.com/images/ingredients/{name}.png"
+
+
+async def fetch_mealdb_image(canonical_or_name: str) -> bytes | None:
+    """Download a real ingredient photo from TheMealDB. Returns PNG bytes or None.
+
+    TheMealDB indexes by English ingredient name; we map via the alias map first.
+    """
+    # Build candidate English query terms
+    key = canonical_key(canonical_or_name)
+    terms = []
+    if key:
+        # prefer a clean English alias (first ascii alias) and the key itself
+        terms.append(key.replace("_", " "))
+        for a in ALIASES.get(key, []):
+            if all(ord(c) < 128 for c in a):  # english/latin alias
+                terms.append(a)
+    terms.append(canonical_or_name)
+    # de-dup preserving order
+    seen = set(); uniq = []
+    for tt in terms:
+        t = tt.strip()
+        if t and t.lower() not in seen:
+            seen.add(t.lower()); uniq.append(t)
+
+    async with httpx.AsyncClient(timeout=20.0, follow_redirects=True) as client:
+        for term in uniq:
+            url = MEALDB_IMG.format(name=term.replace(" ", "%20"))
+            try:
+                r = await client.get(url, headers=scraper.HEADERS)
+                if r.status_code == 200 and r.headers.get("content-type", "").startswith("image"):
+                    if len(r.content) > 100:  # guard against empty/placeholder responses
+                        return r.content
+            except Exception:
+                continue
+    return None
+
+
+def _save_user_icon_png(data: bytes, canonical_name: str) -> str:
+    """Resize+save PNG into the user icon library, named by canonical key. Returns ref or ''."""
+    try:
+        img = Image.open(io.BytesIO(data)).convert("RGBA")
+        img.thumbnail((256, 256))
+        stem = _re.sub(r"[^a-z0-9_]+", "_", (canonical_name or "icon").lower()).strip("_") or "icon"
+        fname = stem + ".png"
+        img.save(os.path.join(USER_ICONS_DIR, fname), "PNG")
+        return f"usericon:{fname}"
+    except Exception:
+        return ""
+
+
+@app.post("/icons-manage/fetch")
+async def icons_fetch(request: Request, name: str = Form(...), db: Session = Depends(get_db)):
+    """Fetch one real ingredient photo from TheMealDB and add it to the library."""
+    data = await fetch_mealdb_image(name)
+    if data:
+        canon = canonical_key(name) or name
+        _save_user_icon_png(data, canon)
+    base = getattr(request.state, "base", "")
+    return RedirectResponse(f"{base}/icons-manage", status_code=303)
+
+
+@app.post("/icons-manage/autofill")
+async def icons_autofill(request: Request, db: Session = Depends(get_db)):
+    """For every ingredient in any recipe lacking an icon, try to fetch one.
+
+    Skips names already covered by a library icon. Applies the fetched photo to
+    matching ingredients too.
+    """
+    # distinct ingredient names that currently have no resolvable library icon
+    names = {}
+    for ing in db.query(models.Ingredient).all():
+        nm = (ing.name or "").strip()
+        if not nm:
+            continue
+        if find_library_icon(nm):
+            continue
+        key = canonical_key(nm) or nm.lower()
+        names.setdefault(key, nm)
+
+    added = 0
+    for key, sample_name in names.items():
+        # skip if we somehow already have it
+        if find_library_icon(sample_name):
+            continue
+        data = await fetch_mealdb_image(sample_name)
+        if not data:
+            continue
+        ref = _save_user_icon_png(data, key)
+        if ref:
+            added += 1
+
+    # apply newly available icons to blank ingredients
+    if added:
+        blanks = (db.query(models.Ingredient)
+                  .filter((models.Ingredient.image == "")
+                          | (models.Ingredient.image.is_(None))).all())
+        for ing in blanks:
+            ref = find_library_icon(ing.name or "")
+            if ref:
+                ing.image = ref
+        db.commit()
+
+    base = getattr(request.state, "base", "")
+    return RedirectResponse(f"{base}/icons-manage?fetched={added}", status_code=303)
 
 
 # ====================  LANGUAGE / SETTINGS  ================================

@@ -96,3 +96,9 @@
 - Auto-apply priority: library icon (by alias) first, then remembered photo
 - Backfill and the "suggest while typing" lookup both use the alias map
 - ~45 common ingredients seeded; extend via app/ingredient_aliases.py
+
+## 1.5.0
+- Fetch REAL ingredient photos from TheMealDB (free, no key) on the Ingredient Icons page
+- "Fetch by name" for one ingredient, plus "Auto-fetch all missing" for the whole library
+- Uses the alias map so French/Arabic names (ail, ثوم) are queried in English (garlic)
+- Fetched photos saved to /data and applied to matching ingredients automatically
