@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}{{ t('cook_with') }} · RecipeBox{% endblock %}
+{% block content %}
+<h1>{{ t('cook_with') }}</h1>
+<p style="color:var(--muted);max-width:640px">{{ t('cook_with_intro') }}</p>
+
+<form method="get" action="{{ base }}/cook-with" id="cwform"
+      class="card" style="padding:18px;max-width:640px;margin:16px 0">
+  <div class="field">
+    <label>{{ t('your_ingredients') }}</label>
+    <textarea name="have" id="have" rows="3"
+      placeholder="oignon, ail, tomate, riz…">{{ have }}</textarea>
+  </div>
+  {% if suggestions %}
+  <div style="margin:6px 0 12px">
+    <div class="pill" style="margin-bottom:8px">{{ t('tap_to_add') }}</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">
+      {% for s in suggestions %}
+      <button type="button" class="chip" onclick="addIng('{{ s|replace("'", "\\'") }}')">{{ s }}</button>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+  <button class="btn" type="submit">{{ t('find_recipes') }}</button>
+</form>
+
+{% if have_names %}
+  {% if results %}
+  <div style="display:flex;flex-direction:column;gap:10px;max-width:720px">
+    {% for res in results %}
+    <a href="{{ base }}/recipe/{{ res.recipe.id }}"
+       class="card" style="padding:14px 16px;display:flex;align-items:center;gap:14px;text-decoration:none">
+      {% if res.recipe.image %}
+      <span style="width:54px;height:54px;border-radius:10px;flex-shrink:0;
+        background:#f3ebe0 url('{{ base }}/uploads/{{ res.recipe.image }}') center/cover"></span>
+      {% endif %}
+      <span style="flex:1">
+        <span style="font-weight:600;display:block">{{ loc_recipe(res.recipe, "title") }}</span>
+        {% if res.missing == 0 %}
+          <span style="color:#2e7d32;font-size:.9rem">✓ {{ t('have_all') }}</span>
+        {% else %}
+          <span style="color:var(--muted);font-size:.9rem">
+            {{ res.missing }} {{ t('missing_n') }}: {{ res.missing_names[:4]|join(', ') }}{% if res.missing_names|length > 4 %}…{% endif %}
+          </span>
+        {% endif %}
+      </span>
+      <span style="flex-shrink:0;font-weight:600;color:var(--muted)">{{ res.have }}/{{ res.total }}</span>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p style="color:var(--muted)">{{ t('no_matches') }}</p>
+  {% endif %}
+{% endif %}
+
+<style>
+.chip{padding:6px 12px;border-radius:999px;border:1px solid var(--line);
+  background:var(--card);cursor:pointer;font-size:.9rem}
+.chip:hover{background:var(--line)}
+</style>
+<script>
+function addIng(name){
+  const ta=document.getElementById('have');
+  const cur=ta.value.trim();
+  const items=cur? cur.split(/[,\n]/).map(s=>s.trim()).filter(Boolean):[];
+  if(items.map(s=>s.toLowerCase()).includes(name.toLowerCase())) return;
+  items.push(name);
+  ta.value=items.join(', ');
+  ta.focus();
+}
+</script>
+{% endblock %}
