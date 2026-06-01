@@ -165,6 +165,14 @@ TRANSLATIONS = {
     "deepl_set":       {"en": "A key is saved. Enter a new one to replace it.", "fr": "Une clé est enregistrée. Saisissez-en une nouvelle pour la remplacer.", "ar": "تم حفظ مفتاح. أدخل مفتاحًا جديدًا لاستبداله."},
     "translate":       {"en": "Translate", "fr": "Traduire", "ar": "ترجم"},
     "translate_recipe":{"en": "Translate this recipe", "fr": "Traduire cette recette", "ar": "ترجمة هذه الوصفة"},
+    "cook_with":       {"en": "What can I cook?", "fr": "Que puis-je cuisiner ?", "ar": "ماذا يمكنني أن أطبخ؟"},
+    "cook_with_intro": {"en": "List the ingredients you have — I'll rank your recipes by how few are missing.", "fr": "Listez les ingrédients que vous avez — je classe vos recettes selon ce qui manque le moins.", "ar": "اكتب المكونات المتوفرة لديك — سأرتب وصفاتك حسب الأقل نقصًا."},
+    "your_ingredients":{"en": "Your ingredients", "fr": "Vos ingrédients", "ar": "مكوناتك"},
+    "find_recipes":    {"en": "Find recipes", "fr": "Trouver des recettes", "ar": "ابحث عن وصفات"},
+    "have_all":        {"en": "You have everything!", "fr": "Vous avez tout !", "ar": "لديك كل شيء!"},
+    "missing_n":       {"en": "missing", "fr": "manquant(s)", "ar": "ناقص"},
+    "tap_to_add":      {"en": "Tap an ingredient to add it", "fr": "Touchez un ingrédient pour l'ajouter", "ar": "اضغط على مكوّن لإضافته"},
+    "no_matches":      {"en": "No recipes matched. Try fewer or different ingredients.", "fr": "Aucune recette trouvée. Essayez moins d'ingrédients ou d'autres.", "ar": "لا توجد وصفات مطابقة. جرّب مكونات أقل أو مختلفة."},
 }
 
 
