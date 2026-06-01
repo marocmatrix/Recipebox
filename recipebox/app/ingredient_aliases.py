@@ -56,6 +56,20 @@ ALIASES = {
     "zucchini":    ["zucchini", "courgette", "كوسة", "كوسا"],
     "bell_pepper": ["bell pepper", "poivron", "فلفل حلو", "فليفلة"],
     "chili":       ["chili", "chilli", "piment", "فلفل حار", "هريسة"],
+    "tuna":        ["tuna", "thon", "تونة", "تونا"],
+    "corn":        ["corn", "maize", "maïs", "mais", "ذرة"],
+    "peas":        ["peas", "petits pois", "pois", "بازلاء", "بزاليا"],
+    "green_beans": ["green beans", "haricots verts", "فاصوليا خضراء", "لوبيا"],
+    "mushroom":    ["mushroom", "mushrooms", "champignon", "champignons", "فطر", "مشروم"],
+    "spinach":     ["spinach", "épinard", "épinards", "epinards", "سبانخ"],
+    "broccoli":    ["broccoli", "brocoli", "بروكلي"],
+    "vinegar":     ["vinegar", "vinaigre", "خل"],
+    "mustard":     ["mustard", "moutarde", "خردل"],
+    "coconut":     ["coconut", "noix de coco", "جوز الهند"],
+    "almond":      ["almond", "almonds", "amande", "amandes", "لوز"],
+    "walnut":      ["walnut", "walnuts", "noix", "جوز عين الجمل", "جوز"],
+    "raisin":      ["raisin", "raisins", "raisins secs", "زبيب"],
+    "olive":       ["olive", "olives", "زيتون"],
 }
 
 
@@ -107,6 +121,20 @@ DISPLAY = {
     "zucchini":    {"fr": "courgette", "en": "zucchini", "ar": "كوسة"},
     "bell_pepper": {"fr": "poivron", "en": "bell pepper", "ar": "فلفل حلو"},
     "chili":       {"fr": "piment", "en": "chili", "ar": "فلفل حار"},
+    "tuna":        {"fr": "thon", "en": "tuna", "ar": "تونة"},
+    "corn":        {"fr": "maïs", "en": "corn", "ar": "ذرة"},
+    "peas":        {"fr": "petits pois", "en": "peas", "ar": "بازلاء"},
+    "green_beans": {"fr": "haricots verts", "en": "green beans", "ar": "فاصوليا خضراء"},
+    "mushroom":    {"fr": "champignon", "en": "mushroom", "ar": "فطر"},
+    "spinach":     {"fr": "épinards", "en": "spinach", "ar": "سبانخ"},
+    "broccoli":    {"fr": "brocoli", "en": "broccoli", "ar": "بروكلي"},
+    "vinegar":     {"fr": "vinaigre", "en": "vinegar", "ar": "خل"},
+    "mustard":     {"fr": "moutarde", "en": "mustard", "ar": "خردل"},
+    "coconut":     {"fr": "noix de coco", "en": "coconut", "ar": "جوز الهند"},
+    "almond":      {"fr": "amandes", "en": "almonds", "ar": "لوز"},
+    "walnut":      {"fr": "noix", "en": "walnuts", "ar": "جوز"},
+    "raisin":      {"fr": "raisins secs", "en": "raisins", "ar": "زبيب"},
+    "olive":       {"fr": "olives", "en": "olives", "ar": "زيتون"},
 }
 
 
@@ -134,6 +162,19 @@ UNIT_DISPLAY = {
     "tsps":    {"fr": "c. à café", "en": "tsp", "ar": "ملعقة صغيرة"},
     "teaspoon":  {"fr": "c. à café", "en": "teaspoon", "ar": "ملعقة صغيرة"},
     "teaspoons": {"fr": "c. à café", "en": "teaspoons", "ar": "ملعقة صغيرة"},
+    "boîte":   {"fr": "boîte", "en": "can", "ar": "علبة"},
+    "boite":   {"fr": "boîte", "en": "can", "ar": "علبة"},
+    "boîtes":  {"fr": "boîtes", "en": "cans", "ar": "علب"},
+    "can":     {"fr": "boîte", "en": "can", "ar": "علبة"},
+    "cans":    {"fr": "boîtes", "en": "cans", "ar": "علب"},
+    "tranche": {"fr": "tranche", "en": "slice", "ar": "شريحة"},
+    "tranches":{"fr": "tranches", "en": "slices", "ar": "شرائح"},
+    "slice":   {"fr": "tranche", "en": "slice", "ar": "شريحة"},
+    "slices":  {"fr": "tranches", "en": "slices", "ar": "شرائح"},
+    "verre":   {"fr": "verre", "en": "glass", "ar": "كوب"},
+    "sachet":  {"fr": "sachet", "en": "packet", "ar": "كيس"},
+    "botte":   {"fr": "botte", "en": "bunch", "ar": "حزمة"},
+    "bunch":   {"fr": "botte", "en": "bunch", "ar": "حزمة"},
 }
 
 # spoon units (multi-word) — keyed by lowercased text
