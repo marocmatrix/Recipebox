@@ -166,6 +166,55 @@ import json as _json
 CONTENT_LANGS = ["fr", "ar", "en"]
 
 
+def _recipe_ingredient_keys(recipe):
+    """Set of canonical ingredient keys for a recipe (falls back to raw name)."""
+    keys = set()
+    for ing in recipe.ingredients:
+        nm = (ing.name or ing.text or "").strip()
+        if not nm:
+            continue
+        keys.add(canonical_key(nm) or nm.lower())
+    return keys
+
+
+def match_recipes_by_ingredients(db: Session, have_names):
+    """Rank recipes by fewest missing ingredients given what the user has.
+
+    Returns a list of dicts: {recipe, have, missing, missing_names, total}
+    sorted by (missing count asc, match ratio desc).
+    """
+    have_keys = set()
+    for n in have_names:
+        n = (n or "").strip()
+        if n:
+            have_keys.add(canonical_key(n) or n.lower())
+    results = []
+    for r in db.query(models.Recipe).all():
+        rkeys = _recipe_ingredient_keys(r)
+        if not rkeys:
+            continue
+        missing = rkeys - have_keys
+        have = rkeys & have_keys
+        # build readable missing names from the recipe's own ingredient names
+        missing_names = []
+        for ing in r.ingredients:
+            k = canonical_key(ing.name or ing.text or "") or (ing.name or "").lower()
+            if k in missing:
+                nm = (ing.name or ing.text or "").strip()
+                if nm and nm not in missing_names:
+                    missing_names.append(nm)
+        results.append({
+            "recipe": r,
+            "have": len(have),
+            "missing": len(missing),
+            "missing_names": missing_names,
+            "total": len(rkeys),
+        })
+    # sort: fewest missing first, then highest proportion you already have
+    results.sort(key=lambda x: (x["missing"], -(x["have"] / x["total"] if x["total"] else 0)))
+    return results
+
+
 def _detect_source_lang(recipe) -> str:
     """Best-effort detect the recipe's written language: 'ar', 'fr', or 'en'.
 
@@ -573,6 +622,27 @@ def index(request: Request, q: str = "", fav: int = 0, db: Session = Depends(get
         query = query.filter(models.Recipe.favorite == True)
     recipes = query.order_by(models.Recipe.created_at.desc()).all()
     return templates.TemplateResponse("index.html", ctx(request, recipes=recipes, q=q, fav=fav))
+
+
+@app.get("/cook-with", response_class=HTMLResponse)
+def cook_with(request: Request, have: str = "", db: Session = Depends(get_db)):
+    """Suggest the user's recipes ranked by fewest missing ingredients."""
+    have_names = [s.strip() for s in have.replace(",", "\n").splitlines() if s.strip()]
+    results = []
+    if have_names:
+        results = match_recipes_by_ingredients(db, have_names)
+    # suggest some ingredient chips from the user's own recipes
+    known = {}
+    for r in db.query(models.Recipe).all():
+        for ing in r.ingredients:
+            nm = (ing.name or "").strip()
+            if nm:
+                known[nm.lower()] = nm
+    suggestions = sorted(known.values(), key=str.lower)[:40]
+    return templates.TemplateResponse(
+        "cook_with.html",
+        ctx(request, results=results, have=have, have_names=have_names,
+            suggestions=suggestions))
 
 
 @app.get("/recipe/{rid}", response_class=HTMLResponse)
