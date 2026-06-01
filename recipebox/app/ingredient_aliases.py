@@ -70,6 +70,9 @@ ALIASES = {
     "walnut":      ["walnut", "walnuts", "noix", "جوز عين الجمل", "جوز"],
     "raisin":      ["raisin", "raisins", "raisins secs", "زبيب"],
     "olive":       ["olive", "olives", "زيتون"],
+    "potato_cake": ["galette de pomme de terre", "galette de pommes de terre",
+                    "galettes de pommes de terre", "potato cake", "potato patty",
+                    "أقراص البطاطس", "كعكة البطاطس"],
 }
 
 
@@ -135,6 +138,7 @@ DISPLAY = {
     "walnut":      {"fr": "noix", "en": "walnuts", "ar": "جوز"},
     "raisin":      {"fr": "raisins secs", "en": "raisins", "ar": "زبيب"},
     "olive":       {"fr": "olives", "en": "olives", "ar": "زيتون"},
+    "potato_cake": {"fr": "galette de pomme de terre", "en": "potato cake", "ar": "أقراص البطاطس"},
 }
 
 
