@@ -299,6 +299,15 @@ async def _download_image(url: str) -> str:
         async with httpx.AsyncClient(timeout=20.0, follow_redirects=True) as client:
             r = await client.get(url, headers=scraper.HEADERS)
             r.raise_for_status()
+            ctype = r.headers.get("content-type", "").lower()
+            path_ext = os.path.splitext(url.split("?")[0])[1].lower()
+            # SVG can't go through Pillow; save it as-is to uploads
+            if "svg" in ctype or path_ext == ".svg":
+                import uuid as _uuid
+                fname = f"{_uuid.uuid4().hex}.svg"
+                with open(os.path.join(UPLOAD_DIR, fname), "wb") as f:
+                    f.write(r.content)
+                return fname
             return _save_image_bytes(r.content)
     except Exception:
         return ""
@@ -679,6 +688,23 @@ def toggle_favorite(rid: int, request: Request, db: Session = Depends(get_db)):
     # return to where the user was if possible, else the recipe
     target = f"{base}/recipe/{rid}"
     return RedirectResponse(target, status_code=303)
+
+
+@app.get("/api/debug-ingredients")
+def api_debug_ingredients(db: Session = Depends(get_db)):
+    """Diagnostic: show stored ingredient names/images and the memory table."""
+    ings = []
+    for ing in db.query(models.Ingredient).order_by(models.Ingredient.id).all():
+        ings.append({
+            "recipe_id": ing.recipe_id,
+            "name": ing.name,
+            "name_repr": repr(ing.name),     # reveals hidden spaces/case
+            "image": ing.image,
+            "text": ing.text,
+        })
+    memory = [{"name": m.name, "name_repr": repr(m.name), "image": m.image}
+              for m in db.query(models.IngredientImage).all()]
+    return {"ingredients": ings, "memory": memory}
 
 
 @app.get("/api/state")

@@ -85,3 +85,7 @@
 ## 1.3.7
 - Backfill now also fills remembered photos into existing recipes that were missing them
   (applies across all old recipes on update, not just newly-saved ones)
+
+## 1.3.8
+- Add /api/debug-ingredients diagnostic (shows stored ingredient names/images + memory)
+- Fix: SVG images added by URL are now saved correctly (previously failed silently via Pillow)
