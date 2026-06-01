@@ -166,11 +166,49 @@ import json as _json
 CONTENT_LANGS = ["fr", "ar", "en"]
 
 
-def translate_recipe(db: Session, recipe, key: str, source_lang: str = "en"):
+def _detect_source_lang(recipe) -> str:
+    """Best-effort detect the recipe's written language: 'ar', 'fr', or 'en'.
+
+    Uses script (Arabic letters) and common French markers. Defaults to 'en'.
+    """
+    text = " ".join([
+        recipe.title or "", recipe.description or "",
+        " ".join((i.text or i.name or "") for i in recipe.ingredients),
+        " ".join((s.text or "") for s in recipe.steps),
+    ]).lower()
+    if not text.strip():
+        return "en"
+    # Arabic script?
+    arabic = sum(1 for ch in text if "\u0600" <= ch <= "\u06ff")
+    if arabic > 5:
+        return "ar"
+    # French markers: accented letters and frequent function words
+    fr_accents = sum(text.count(c) for c in "éèêàâîïôûçœ")
+    fr_words = 0
+    for w in (" de ", " des ", " du ", " à ", " et ", " avec ", " le ", " la ",
+              " les ", " une ", " cuillère", " d'", " pommes", " sel", " poêle"):
+        fr_words += text.count(w)
+    en_words = 0
+    for w in (" the ", " and ", " with ", " cup ", " cups ", " teaspoon",
+              " tablespoon", " of ", " until ", " minutes", " heat ", " add "):
+        en_words += text.count(w)
+    if (fr_accents + fr_words) > en_words:
+        return "fr"
+    return "en"
+
+
+def translate_recipe(db: Session, recipe, key: str, source_lang: str = None):
     """Translate a recipe's title, description, ingredient names and steps into
-    all CONTENT_LANGS (except the source) and store as JSON on the rows."""
+    all CONTENT_LANGS (except the source) and store as JSON on the rows.
+
+    If source_lang is None, the recipe's language is auto-detected and passed
+    explicitly to DeepL (more reliable than DeepL's per-fragment auto-detect,
+    which can transliterate short French terms like 'galette de pomme de terre').
+    """
     if not key:
         return False
+    if not source_lang:
+        source_lang = _detect_source_lang(recipe)
     targets = [l for l in CONTENT_LANGS if l != source_lang]
     # gather source strings
     ing_names = [(i.name or i.text or "") for i in recipe.ingredients]
@@ -734,7 +772,7 @@ async def import_url(request: Request, url: str = Form(...), db: Session = Depen
     if key:
         db.refresh(r)
         try:
-            translate_recipe(db, r, key, source_lang="en")
+            translate_recipe(db, r, key)  # auto-detect source language
         except Exception:
             pass
     base = getattr(request.state, "base", "")
@@ -933,7 +971,7 @@ def translate_recipe_route(rid: int, request: Request, db: Session = Depends(get
     key = get_setting(db, "deepl_key", "")
     if key:
         try:
-            translate_recipe(db, r, key, source_lang="en")
+            translate_recipe(db, r, key)  # auto-detect source language
         except Exception:
             pass
     return RedirectResponse(f"{base}/recipe/{rid}", status_code=303)
