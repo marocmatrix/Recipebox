@@ -20,4 +20,14 @@
   </div>
   <button class="btn" type="submit">{{ t('save') }}</button>
 </form>
+
+<form method="post" action="{{ base }}/settings" style="max-width:480px;margin-top:24px">
+  <input type="hidden" name="language" value="{{ lang }}">
+  <div class="field">
+    <label>{{ t('deepl_key') }}</label>
+    <input type="text" name="deepl_key" placeholder="xxxxxxxx-xxxx-...:fx" autocomplete="off">
+    {% if has_key %}<div class="pill" style="margin-top:6px">🔑 {{ t('deepl_set') }}</div>{% endif %}
+  </div>
+  <button class="btn" type="submit">{{ t('save') }}</button>
+</form>
 {% endblock %}

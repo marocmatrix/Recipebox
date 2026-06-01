@@ -8,7 +8,7 @@
 {% endif %}
 
 <div class="page-head">
-  <h1>{{ r.title }}</h1>
+  <h1>{{ loc_recipe(r, "title") }}</h1>
   <div class="spacer"></div>
   <form method="post" action="{{ base }}/recipe/{{ r.id }}/favorite" style="display:inline">
     <button class="btn sm {{ '' if r.favorite else 'gray' }}" type="submit"
@@ -17,6 +17,9 @@
     </button>
   </form>
   <a class="btn" href="{{ base }}/recipe/{{ r.id }}/cook">👨‍🍳 {{ t('cook_mode') }}</a>
+  <form method="post" action="{{ base }}/recipe/{{ r.id }}/translate" style="display:inline">
+    <button class="btn gray sm" type="submit" title="{{ t('translate_recipe') }}">🌐 {{ t('translate') }}</button>
+  </form>
   <a class="btn gray sm" href="{{ base }}/recipe/{{ r.id }}/edit">{{ t('edit') }}</a>
 </div>
 
@@ -29,7 +32,7 @@
   {% if r.source_url %}<span><a style="color:var(--accent)" href="{{ r.source_url }}" target="_blank">{{ t('source') }} ↗</a></span>{% endif %}
 </div>
 {% if r.tags %}<div>{% for tg in r.tags.split(',') %}{% if tg.strip() %}<span class="tag">{{ tg.strip() }}</span>{% endif %}{% endfor %}</div>{% endif %}
-{% if r.description %}<p style="color:var(--muted);margin-top:14px;max-width:680px">{{ r.description }}</p>{% endif %}
+{% set desc = loc_recipe(r, "description") %}{% if desc %}<p style="color:var(--muted);margin-top:14px;max-width:680px">{{ desc }}</p>{% endif %}
 
 <hr>
 
@@ -52,7 +55,7 @@
         {% if ing.image %}<span style="width:34px;height:34px;border-radius:8px;flex-shrink:0;
           background:#f3ebe0 url('{{ img_url(ing.image) }}') center/cover"></span>{% endif %}
         <span>
-          {% if ing.name %}{% set q = scale_qty(ing.quantity, scale) %}<span style="font-weight:500">{{ q }}{% if q and ing.unit %} {% endif %}{{ ing.unit }}</span>{% if (q or ing.unit) %} {% endif %}{{ ing.name }}{% else %}{{ ing.text }}{% endif %}
+          {% if ing.name %}{% set q = scale_qty(ing.quantity, scale) %}<span style="font-weight:500">{{ q }}{% if q and ing.unit %} {% endif %}{{ ing.unit }}</span>{% if (q or ing.unit) %} {% endif %}{{ loc_text(ing.name_translations, ing.name) }}{% else %}{{ ing.text }}{% endif %}
         </span>
       </li>
       {% endfor %}
@@ -73,7 +76,7 @@
         <div style="aspect-ratio:16/9;border-radius:12px;margin-bottom:10px;max-width:420px;
           background:#efe7db url('{{ base }}/uploads/{{ s.image }}') center/cover"></div>
         {% endif %}
-        <p style="margin:0">{{ s.text }}</p>
+        <p style="margin:0">{{ loc_text(s.translations, s.text) }}</p>
         {% if s.timer_seconds %}
         <span class="tag" style="margin-top:8px">⏱ {{ (s.timer_seconds//60) }} min{% if s.timer_seconds%60 %} {{ s.timer_seconds%60 }}s{% endif %}</span>
         {% endif %}

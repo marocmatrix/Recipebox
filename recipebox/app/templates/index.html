@@ -25,7 +25,7 @@
         justify-content:center;font-size:.9rem">★</span>{% endif %}
     </div>
     <div class="body">
-      <h3>{{ r.title }}</h3>
+      <h3>{{ loc_recipe(r, "title") }}</h3>
       <div class="meta">
         {% if r.cook_minutes or r.prep_minutes %}<span>⏱ {{ r.prep_minutes + r.cook_minutes }} {{ t('min') }}</span>{% endif %}
         <span>🍽 {{ r.servings }} {{ t('servings_short') }}</span>

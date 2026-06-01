@@ -37,7 +37,7 @@ nav.main,header.top{display:none}
   <div class="cook-head">
     <a class="exit" href="{{ base }}/recipe/{{ r.id }}">✕ Exit</a>
     <div class="spacer" style="flex:1"></div>
-    <h1>{{ r.title }}</h1>
+    <h1>{{ loc_recipe(r, "title") }}</h1>
   </div>
   <div class="progress"><span id="bar"></span></div>
 
@@ -63,7 +63,7 @@ nav.main,header.top{display:none}
 <script>
 const STEPS = [
   {% for s in r.steps %}
-  { text: {{ s.text|tojson }}, img: {{ (base ~ '/uploads/' ~ s.image) if s.image else '' |tojson }}, timer: {{ s.timer_seconds }} },
+  { text: {{ loc_text(s.translations, s.text)|tojson }}, img: {{ (base ~ '/uploads/' ~ s.image) if s.image else '' |tojson }}, timer: {{ s.timer_seconds }} },
   {% endfor %}
 ];
 const UPLOAD_BASE = "{{ base }}/uploads/";
