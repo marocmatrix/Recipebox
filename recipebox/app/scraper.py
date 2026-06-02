@@ -126,6 +126,21 @@ def scrape(url: str) -> dict:
     except ValueError:
         servings = 4
 
+    # nutrition (schema.org NutritionInformation), if present
+    nutrition = {}
+    nut = recipe.get("nutrition")
+    if isinstance(nut, dict):
+        fields = {
+            "calories": "calories", "protein": "proteinContent",
+            "fat": "fatContent", "carbs": "carbohydrateContent",
+            "fiber": "fiberContent", "sugar": "sugarContent",
+            "sodium": "sodiumContent", "serving": "servingSize",
+        }
+        for label, schemakey in fields.items():
+            v = nut.get(schemakey)
+            if v:
+                nutrition[label] = decode_text(str(v))
+
     return {
         "title": decode_text(recipe.get("name", "")) or "Imported recipe",
         "description": decode_text((recipe.get("description") or ""))[:2000],
@@ -135,5 +150,6 @@ def scrape(url: str) -> dict:
         "image_url": image,
         "ingredients": _as_text_list(recipe.get("recipeIngredient", [])),
         "steps": _as_text_list(recipe.get("recipeInstructions", [])),
+        "nutrition": nutrition,
         "source_url": url,
     }
