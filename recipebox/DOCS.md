@@ -75,3 +75,12 @@ On the Ingredient Icons page you can pull real photos from TheMealDB (free):
 Fetched images are stored in /data and persist across updates. Requires the add-on
 to have internet access on your device. Not every ingredient exists in TheMealDB;
 those are simply skipped and you can upload your own.
+
+## Translating recipe content
+RecipeBox can translate the actual recipe text (title, ingredients, steps), not just
+the interface. Get a free DeepL API key (deepl.com/pro-api, the key ends in ":fx"),
+paste it in Settings. Imported recipes are then translated automatically into the
+other languages and stored, so switching language (FR/EN/AR) instantly shows the
+translated content. For recipes added before you set the key, open the recipe and
+press "Translate". Requires internet access on the device. Untranslated recipes
+simply show their original text.
