@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}{{ t('edit_translations') }} · RecipeBox{% endblock %}
+{% block content %}
+<h1>{{ t('edit_translations') }}</h1>
+<p style="color:var(--muted)">{{ r.title }}</p>
+
+<form method="post" action="{{ base }}/recipe/{{ r.id }}/translations" style="max-width:760px">
+  {% for lang in langs %}
+  <div class="card" style="padding:16px;margin:14px 0">
+    <h2 style="margin:0 0 10px">{{ lang|upper }}</h2>
+
+    <div class="field">
+      <label>{{ t('title') if t('title') != 'title' else 'Title' }}</label>
+      <input type="text" name="title_{{ lang }}"
+             value="{{ rec_tr.get(lang, {}).get('title', '') }}"
+             placeholder="{{ r.title }}">
+    </div>
+    <div class="field">
+      <label>Description</label>
+      <textarea name="desc_{{ lang }}" rows="2"
+        placeholder="{{ r.description }}">{{ rec_tr.get(lang, {}).get('description', '') }}</textarea>
+    </div>
+
+    <details style="margin-top:8px">
+      <summary style="cursor:pointer;font-weight:600">{{ t('ingredients') }}</summary>
+      {% for ing in r.ingredients %}
+      <div class="field" style="margin-top:8px">
+        <label style="color:var(--muted)">{{ ing.name or ing.text }}</label>
+        <input type="text" name="ing_{{ loop.index0 }}_{{ lang }}"
+               value="{{ ing_tr[loop.index0].get(lang, '') }}">
+      </div>
+      {% endfor %}
+    </details>
+
+    <details style="margin-top:8px">
+      <summary style="cursor:pointer;font-weight:600">{{ t('steps') }}</summary>
+      {% for s in r.steps %}
+      <div class="field" style="margin-top:8px">
+        <label style="color:var(--muted)">{{ s.text[:60] }}{% if s.text|length > 60 %}…{% endif %}</label>
+        <textarea name="step_{{ loop.index0 }}_{{ lang }}" rows="2">{{ step_tr[loop.index0].get(lang, '') }}</textarea>
+      </div>
+      {% endfor %}
+    </details>
+  </div>
+  {% endfor %}
+  <button class="btn" type="submit">{{ t('save') }}</button>
+</form>
+{% endblock %}
