@@ -55,7 +55,7 @@
         {% if ing.image %}<span style="width:34px;height:34px;border-radius:8px;flex-shrink:0;
           background:#f3ebe0 url('{{ img_url(ing.image) }}') center/cover"></span>{% endif %}
         <span>
-          {{ loc_ingredient(ing, scale) }}
+          {% if ing.name %}{% set q = scale_qty(ing.quantity, scale) %}<span style="font-weight:500">{{ q }}{% if q and ing.unit %} {% endif %}{{ ing.unit }}</span>{% if (q or ing.unit) %} {% endif %}{{ loc_text(ing.name_translations, ing.name) }}{% else %}{{ ing.text }}{% endif %}
         </span>
       </li>
       {% endfor %}
