@@ -14,6 +14,11 @@
   --radius:16px;
 }
 *{box-sizing:border-box}
+html,body{max-width:100%;overflow-x:hidden}
+.recipe-cols{display:grid;grid-template-columns:300px 1fr;gap:46px;align-items:start}
+@media(max-width:760px){
+  .recipe-cols{grid-template-columns:1fr;gap:28px}
+}
 body{margin:0;font-family:'Jost',sans-serif;background:var(--bg);color:var(--ink);
   -webkit-font-smoothing:antialiased;line-height:1.55}
 a{color:inherit;text-decoration:none}
