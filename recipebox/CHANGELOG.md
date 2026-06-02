@@ -154,3 +154,8 @@
 - "What can I cook?" page now also DISCOVERS famous recipes (TheMealDB) by your first ingredient
 - Tap a discovered recipe to see full details, then Import (auto-translated) into your collection
 - Discovery uses the alias map so French/Arabic ingredient names query in English
+
+## 1.9.0
+- Editable translations: per-recipe page (✏️) to hand-correct title/description/ingredients/steps in FR/EN/AR
+- Export / backup: download all recipes as JSON (Settings), and restore from a JSON backup
+- Nutrition: imported recipes now capture & show per-serving calories/protein/fat/carbs/etc. when the site provides it
