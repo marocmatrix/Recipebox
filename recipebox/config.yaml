@@ -1,8 +1,8 @@
 name: RecipeBox
-version: "1.9.1"
+version: "1.9.2"
 slug: recipebox
 description: Self-hosted recipe manager (EN/FR/AR) with step photos, timers, cook mode, shopping list & meal planning
-url: https://github.com/marocmatrix/recipe-addon
+url: https://github.com/marocmatrix/Recipebox
 arch:
   - aarch64
   - amd64
