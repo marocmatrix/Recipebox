@@ -37,7 +37,7 @@
 
 <hr>
 
-<div style="display:grid;grid-template-columns:300px 1fr;gap:46px;align-items:start">
+<div class="recipe-cols">
   <!-- Ingredients -->
   <div>
     <div class="row" style="justify-content:space-between;margin-bottom:14px">
@@ -55,7 +55,7 @@
       <li style="padding:9px 0;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px">
         {% if ing.image %}<span style="width:34px;height:34px;border-radius:8px;flex-shrink:0;
           background:#f3ebe0 url('{{ img_url(ing.image) }}') center/cover"></span>{% endif %}
-        <span>
+        <span style="min-width:0;overflow-wrap:anywhere">
           {{ loc_ingredient(ing, scale) }}
         </span>
       </li>
