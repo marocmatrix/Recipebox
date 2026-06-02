@@ -35,6 +35,7 @@ UNITS = [
     "gousse", "gousses", "tranche", "tranches", "tasse", "tasses",
     "verre", "verres", "sachet", "sachets", "botte", "bottes",
     "boîte", "boîtes", "boite", "boites", "barquette", "barquettes",
+    "cube", "cubes", "cl", "dl",
     # Arabic (common)
     "كوب", "ملعقة", "غرام", "كيلو", "حبة", "رشة", "فص",
 ]
