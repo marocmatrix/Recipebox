@@ -16,7 +16,8 @@ from . import models, scraper
 from .i18n import LANGUAGES, make_translator
 from .ingredient_parser import (parse_ingredient, compose_text,
                                 quantity_to_float, format_quantity)
-from .ingredient_aliases import canonical_key, ALIASES
+from .ingredient_aliases import (canonical_key, ALIASES, display_name,
+                                 display_unit)
 from . import translate as deepl
 
 Base.metadata.create_all(bind=engine)
@@ -165,11 +166,98 @@ import json as _json
 CONTENT_LANGS = ["fr", "ar", "en"]
 
 
-def translate_recipe(db: Session, recipe, key: str, source_lang: str = "en"):
+def _recipe_ingredient_keys(recipe):
+    """Set of canonical ingredient keys for a recipe (falls back to raw name)."""
+    keys = set()
+    for ing in recipe.ingredients:
+        nm = (ing.name or ing.text or "").strip()
+        if not nm:
+            continue
+        keys.add(canonical_key(nm) or nm.lower())
+    return keys
+
+
+def match_recipes_by_ingredients(db: Session, have_names):
+    """Rank recipes by fewest missing ingredients given what the user has.
+
+    Returns a list of dicts: {recipe, have, missing, missing_names, total}
+    sorted by (missing count asc, match ratio desc).
+    """
+    have_keys = set()
+    for n in have_names:
+        n = (n or "").strip()
+        if n:
+            have_keys.add(canonical_key(n) or n.lower())
+    results = []
+    for r in db.query(models.Recipe).all():
+        rkeys = _recipe_ingredient_keys(r)
+        if not rkeys:
+            continue
+        missing = rkeys - have_keys
+        have = rkeys & have_keys
+        # build readable missing names from the recipe's own ingredient names
+        missing_names = []
+        for ing in r.ingredients:
+            k = canonical_key(ing.name or ing.text or "") or (ing.name or "").lower()
+            if k in missing:
+                nm = (ing.name or ing.text or "").strip()
+                if nm and nm not in missing_names:
+                    missing_names.append(nm)
+        results.append({
+            "recipe": r,
+            "have": len(have),
+            "missing": len(missing),
+            "missing_names": missing_names,
+            "total": len(rkeys),
+        })
+    # sort: fewest missing first, then highest proportion you already have
+    results.sort(key=lambda x: (x["missing"], -(x["have"] / x["total"] if x["total"] else 0)))
+    return results
+
+
+def _detect_source_lang(recipe) -> str:
+    """Best-effort detect the recipe's written language: 'ar', 'fr', or 'en'.
+
+    Uses script (Arabic letters) and common French markers. Defaults to 'en'.
+    """
+    text = " ".join([
+        recipe.title or "", recipe.description or "",
+        " ".join((i.text or i.name or "") for i in recipe.ingredients),
+        " ".join((s.text or "") for s in recipe.steps),
+    ]).lower()
+    if not text.strip():
+        return "en"
+    # Arabic script?
+    arabic = sum(1 for ch in text if "\u0600" <= ch <= "\u06ff")
+    if arabic > 5:
+        return "ar"
+    # French markers: accented letters and frequent function words
+    fr_accents = sum(text.count(c) for c in "éèêàâîïôûçœ")
+    fr_words = 0
+    for w in (" de ", " des ", " du ", " à ", " et ", " avec ", " le ", " la ",
+              " les ", " une ", " cuillère", " d'", " pommes", " sel", " poêle"):
+        fr_words += text.count(w)
+    en_words = 0
+    for w in (" the ", " and ", " with ", " cup ", " cups ", " teaspoon",
+              " tablespoon", " of ", " until ", " minutes", " heat ", " add "):
+        en_words += text.count(w)
+    if (fr_accents + fr_words) > en_words:
+        return "fr"
+    return "en"
+
+
+def translate_recipe(db: Session, recipe, key: str, source_lang: str = None):
     """Translate a recipe's title, description, ingredient names and steps into
-    all CONTENT_LANGS (except the source) and store as JSON on the rows."""
+    all CONTENT_LANGS (except the source) and store as JSON on the rows.
+
+    If source_lang is None, the recipe's language is auto-detected and passed
+    explicitly to DeepL (more reliable than DeepL's per-fragment auto-detect,
+    which can transliterate short French terms like 'galette de pomme de terre').
+    """
     if not key:
         return False
+    if not source_lang:
+        source_lang = _detect_source_lang(recipe)
     targets = [l for l in CONTENT_LANGS if l != source_lang]
     # gather source strings
     ing_names = [(i.name or i.text or "") for i in recipe.ingredients]
@@ -186,16 +274,52 @@ def translate_recipe(db: Session, recipe, key: str, source_lang: str = "en"):
         td = deepl.translate_batch([recipe.title or "", recipe.description or ""],
                                    lang, key, source_lang)
         rec_tr[lang] = {"title": td[0], "description": td[1]}
-        # ingredient names
-        if ing_names:
-            tr_names = deepl.translate_batch(ing_names, lang, key, source_lang)
-            for ing, tn in zip(recipe.ingredients, tr_names):
+
+        # --- ingredients: build a full translated line per ingredient ---
+        if recipe.ingredients:
+            # decide each ingredient's translated NAME: curated alias first, else DeepL.
+            # Only use the curated word when the name is an EXACT alias (no extra
+            # descriptors like "vert"/"jaune"), so "poivron vert" keeps its color.
+            from .ingredient_aliases import _norm
+            names_needing_deepl = []
+            idx_needing = []
+            curated = {}
+            for idx, ing in enumerate(recipe.ingredients):
+                raw = (ing.name or ing.text or "")
+                ckey = canonical_key(raw)
+                dn = display_name(ckey, lang) if ckey else ""
+                # exact match? the normalized name equals one of the key's aliases
+                exact = False
+                if ckey and dn:
+                    aliases = {_norm(a) for a in ALIASES.get(ckey, [])}
+                    aliases.add(_norm(ckey))
+                    if _norm(raw) in aliases:
+                        exact = True
+                if exact:
+                    curated[idx] = dn
+                else:
+                    names_needing_deepl.append(raw)
+                    idx_needing.append(idx)
+            deepl_names = {}
+            if names_needing_deepl:
+                tr = deepl.translate_batch(names_needing_deepl, lang, key, source_lang)
+                for j, idx in enumerate(idx_needing):
+                    deepl_names[idx] = tr[j] if j < len(tr) else names_needing_deepl[j]
+
+            for idx, ing in enumerate(recipe.ingredients):
+                tr_name = curated.get(idx) or deepl_names.get(idx) or (ing.name or ing.text or "")
+                tr_unit = display_unit(ing.unit or "", lang)
+                qty = (ing.quantity or "").strip()
+                # compose a full line; for Arabic keep numerals + RTL handles direction
+                parts = [p for p in [qty, tr_unit, tr_name] if p]
+                line = " ".join(parts)
                 try:
                     m = _json.loads(ing.name_translations) if ing.name_translations else {}
                 except Exception:
                     m = {}
-                m[lang] = tn
+                m[lang] = line
                 ing.name_translations = _json.dumps(m, ensure_ascii=False)
+
         # steps
         if step_texts:
             tr_steps = deepl.translate_batch(step_texts, lang, key, source_lang)
@@ -298,6 +422,41 @@ _upgrade_ingredient_structure()
 _backfill_ingredient_images()
 
 
+def _cleanup_encoded_text():
+    """Decode HTML entities in already-stored recipe text (one-time, idempotent)."""
+    from .scraper import decode_text
+    db = SessionLocal()
+    try:
+        changed = 0
+        for r in db.query(models.Recipe).all():
+            for field in ("title", "description"):
+                v = getattr(r, field) or ""
+                if "&" in v:
+                    nv = decode_text(v)
+                    if nv != v:
+                        setattr(r, field, nv); changed += 1
+        for ing in db.query(models.Ingredient).all():
+            for field in ("text", "name"):
+                v = getattr(ing, field) or ""
+                if "&" in v:
+                    nv = decode_text(v)
+                    if nv != v:
+                        setattr(ing, field, nv); changed += 1
+        for s in db.query(models.Step).all():
+            v = s.text or ""
+            if "&" in v:
+                nv = decode_text(v)
+                if nv != v:
+                    s.text = nv; changed += 1
+        if changed:
+            db.commit()
+    finally:
+        db.close()
+
+
+_cleanup_encoded_text()
+
+
 # ---- Ingress base-path handling -------------------------------------------
 # Home Assistant serves the add-on behind a path prefix. We read the
 # X-Ingress-Path header and expose it to templates so links work.
@@ -378,6 +537,35 @@ def ctx(request: Request, **kwargs):
             return orig
         return (m.get(lang) or {}).get(field) or orig
 
+    def loc_ingredient(ing, factor: float = 1.0) -> str:
+        """Full ingredient line for the current language.
+
+        For a translated language, use the stored full line (qty+unit+name),
+        scaling its leading quantity. Otherwise compose from qty/unit/name.
+        """
+        # translated full line for this language?
+        tline = ""
+        if ing.name_translations:
+            try:
+                tline = (_json.loads(ing.name_translations) or {}).get(lang, "")
+            except Exception:
+                tline = ""
+        if tline:
+            # scale the stored quantity in the line if present
+            if factor != 1 and ing.quantity:
+                sq = scale_qty(ing.quantity, factor)
+                # replace the original quantity token at the start if it matches
+                if tline.startswith(ing.quantity):
+                    tline = sq + tline[len(ing.quantity):]
+            return tline
+        # fallback: compose from structured fields (source language)
+        if ing.name:
+            q = scale_qty(ing.quantity, factor)
+            unit = ing.unit or ""
+            parts = [p for p in [q, unit, ing.name] if p]
+            return " ".join(parts)
+        return ing.text or ""
+
     return {
         "request": request,
         "base": base,
@@ -389,6 +577,7 @@ def ctx(request: Request, **kwargs):
         "scale_qty": scale_qty,
         "loc_text": loc_text,
         "loc_recipe": loc_recipe,
+        "loc_ingredient": loc_ingredient,
         **kwargs,
     }
 
@@ -444,6 +633,75 @@ def index(request: Request, q: str = "", fav: int = 0, db: Session = Depends(get
         query = query.filter(models.Recipe.favorite == True)
     recipes = query.order_by(models.Recipe.created_at.desc()).all()
     return templates.TemplateResponse("index.html", ctx(request, recipes=recipes, q=q, fav=fav))
+
+
+@app.get("/cook-with", response_class=HTMLResponse)
+async def cook_with(request: Request, have: str = "", db: Session = Depends(get_db)):
+    """Suggest the user's recipes ranked by fewest missing, plus famous recipes
+    (TheMealDB) using the first ingredient."""
+    have_names = [s.strip() for s in have.replace(",", "\n").splitlines() if s.strip()]
+    results = []
+    discover = []
+    if have_names:
+        results = match_recipes_by_ingredients(db, have_names)
+        # discover famous recipes by the first ingredient
+        try:
+            discover = await mealdb_search_by_ingredient(have_names[0])
+        except Exception:
+            discover = []
+    known = {}
+    for r in db.query(models.Recipe).all():
+        for ing in r.ingredients:
+            nm = (ing.name or "").strip()
+            if nm:
+                known[nm.lower()] = nm
+    suggestions = sorted(known.values(), key=str.lower)[:40]
+    return templates.TemplateResponse(
+        "cook_with.html",
+        ctx(request, results=results, have=have, have_names=have_names,
+            suggestions=suggestions, discover=discover))
+
+
+@app.get("/discover/{meal_id}", response_class=HTMLResponse)
+async def discover_detail(meal_id: str, request: Request, db: Session = Depends(get_db)):
+    """Show a TheMealDB recipe's details before importing."""
+    data = await mealdb_lookup(meal_id)
+    base = getattr(request.state, "base", "")
+    if not data:
+        return RedirectResponse(f"{base}/cook-with", status_code=303)
+    return templates.TemplateResponse("discover.html", ctx(request, r=data, meal_id=meal_id))
+
+
+@app.post("/discover/{meal_id}/import")
+async def discover_import(meal_id: str, request: Request, db: Session = Depends(get_db)):
+    """Import a TheMealDB recipe into the user's collection (and translate)."""
+    data = await mealdb_lookup(meal_id)
+    base = getattr(request.state, "base", "")
+    if not data:
+        return RedirectResponse(f"{base}/cook-with", status_code=303)
+    r = models.Recipe(
+        title=data["title"], description=data["description"],
+        servings=data["servings"], prep_minutes=data["prep_minutes"],
+        cook_minutes=data["cook_minutes"], source_url=data["source_url"],
+    )
+    r.image = await _download_image(data.get("image_url", ""))
+    db.add(r); db.flush()
+    for i, txt in enumerate(data["ingredients"]):
+        p = parse_ingredient(txt)
+        db.add(models.Ingredient(recipe_id=r.id, position=i, text=txt,
+                                 quantity=p["quantity"], unit=p["unit"],
+                                 name=p["name"] or txt))
+    for i, txt in enumerate(data["steps"]):
+        db.add(models.Step(recipe_id=r.id, position=i, text=txt))
+    db.commit()
+    key = get_setting(db, "deepl_key", "")
+    if key:
+        db.refresh(r)
+        try:
+            translate_recipe(db, r, key)  # auto-detect (MealDB is English)
+        except Exception:
+            pass
+    return RedirectResponse(f"{base}/recipe/{r.id}", status_code=303)
 
 
 @app.get("/recipe/{rid}", response_class=HTMLResponse)
@@ -643,7 +901,7 @@ async def import_url(request: Request, url: str = Form(...), db: Session = Depen
     if key:
         db.refresh(r)
         try:
-            translate_recipe(db, r, key, source_lang="en")
+            translate_recipe(db, r, key)  # auto-detect source language
         except Exception:
             pass
     base = getattr(request.state, "base", "")
@@ -806,6 +1064,33 @@ def health():
     return {"status": "ok"}
 
 
+@app.get("/api/translate-test")
+def api_translate_test(db: Session = Depends(get_db)):
+    """Diagnose translation: is a key set, does it work, what does DeepL return."""
+    key = get_setting(db, "deepl_key", "")
+    out = {"key_set": bool(key), "key_suffix": key[-3:] if key else ""}
+    if not key:
+        out["error"] = "No DeepL key saved in Settings."
+        return out
+    ok, msg = deepl.verify_key(key)
+    out["key_valid"] = ok
+    out["verify_message"] = msg
+    # try a real sample translation to FR and AR
+    try:
+        fr = deepl.translate_batch(["Toss the shrimp with olive oil."], "fr", key, "en")
+        out["sample_fr"] = fr[0] if fr else None
+    except Exception as e:
+        out["sample_fr_error"] = str(e)
+    try:
+        ar = deepl.translate_batch(["Toss the shrimp with olive oil."], "ar", key, "en")
+        out["sample_ar"] = ar[0] if ar else None
+    except Exception as e:
+        out["sample_ar_error"] = str(e)
+    # raw DeepL response for FR, to see exactly what the API says
+    out["raw_fr"] = deepl.translate_debug(["Toss the shrimp with olive oil."], "fr", key, "en")
+    return out
+
+
 @app.post("/recipe/{rid}/translate")
 def translate_recipe_route(rid: int, request: Request, db: Session = Depends(get_db)):
     r = db.get(models.Recipe, rid)
@@ -815,7 +1100,7 @@ def translate_recipe_route(rid: int, request: Request, db: Session = Depends(get
     key = get_setting(db, "deepl_key", "")
     if key:
         try:
-            translate_recipe(db, r, key, source_lang="en")
+            translate_recipe(db, r, key)  # auto-detect source language
         except Exception:
             pass
     return RedirectResponse(f"{base}/recipe/{rid}", status_code=303)
@@ -1015,6 +1300,78 @@ async def fetch_mealdb_image(canonical_or_name: str) -> bytes | None:
             except Exception:
                 continue
     return None
+
+
+# ---- TheMealDB recipe discovery (free, no key) ----
+MEALDB_FILTER = "https://www.themealdb.com/api/json/v1/1/filter.php?i={ing}"
+MEALDB_LOOKUP = "https://www.themealdb.com/api/json/v1/1/lookup.php?i={id}"
+
+
+async def mealdb_search_by_ingredient(name: str):
+    """Return a list of {id, title, image} famous recipes using an ingredient.
+
+    Uses the alias map to query TheMealDB in English (its index language).
+    """
+    key = canonical_key(name)
+    term = key.replace("_", " ") if key else name
+    # prefer an english alias
+    if key:
+        for a in ALIASES.get(key, []):
+            if all(ord(c) < 128 for c in a):
+                term = a
+                break
+    out = []
+    try:
+        async with httpx.AsyncClient(timeout=20.0, follow_redirects=True) as client:
+            r = await client.get(MEALDB_FILTER.format(ing=term.replace(" ", "_")),
+                                 headers=scraper.HEADERS)
+            r.raise_for_status()
+            meals = (r.json() or {}).get("meals") or []
+            for m in meals[:12]:
+                out.append({"id": m.get("idMeal"), "title": m.get("strMeal"),
+                            "image": m.get("strMealThumb")})
+    except Exception:
+        return []
+    return out
+
+
+async def mealdb_lookup(meal_id: str):
+    """Fetch a full MealDB recipe by id → dict like the scraper returns, or None."""
+    try:
+        async with httpx.AsyncClient(timeout=20.0, follow_redirects=True) as client:
+            r = await client.get(MEALDB_LOOKUP.format(id=meal_id), headers=scraper.HEADERS)
+            r.raise_for_status()
+            meals = (r.json() or {}).get("meals") or []
+            if not meals:
+                return None
+            m = meals[0]
+    except Exception:
+        return None
+    # ingredients are strIngredient1..20 + strMeasure1..20
+    ingredients = []
+    for i in range(1, 21):
+        ing = (m.get(f"strIngredient{i}") or "").strip()
+        mea = (m.get(f"strMeasure{i}") or "").strip()
+        if ing:
+            ingredients.append((f"{mea} {ing}").strip())
+    steps = []
+    instr = (m.get("strInstructions") or "").replace("\r\n", "\n")
+    for line in instr.split("\n"):
+        line = line.strip()
+        if line:
+            steps.append(line)
+    return {
+        "title": m.get("strMeal", "Imported recipe"),
+        "description": (m.get("strArea", "") + (" · " if m.get("strCategory") else "")
+                        + m.get("strCategory", "")).strip(" ·"),
+        "servings": 4,
+        "prep_minutes": 0,
+        "cook_minutes": 0,
+        "image_url": m.get("strMealThumb", ""),
+        "ingredients": ingredients,
+        "steps": steps,
+        "source_url": m.get("strSource") or f"https://www.themealdb.com/meal/{meal_id}",
+    }
 
 
 def _save_user_icon_png(data: bytes, canonical_name: str) -> str:
