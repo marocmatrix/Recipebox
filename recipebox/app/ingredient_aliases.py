@@ -73,6 +73,12 @@ ALIASES = {
     "potato_cake": ["galette de pomme de terre", "galette de pommes de terre",
                     "galettes de pommes de terre", "potato cake", "potato patty",
                     "أقراص البطاطس", "كعكة البطاطس"],
+    "cream":       ["cream", "crème", "creme", "crème fraîche", "heavy cream", "كريمة", "قشطة"],
+    "stock":       ["stock", "broth", "bouillon", "مرق"],
+    "wine":        ["wine", "vin", "نبيذ"],
+    "tomato_paste":["tomato paste", "concentré de tomate", "purée de tomate",
+                    "purée de tomates", "معجون طماطم", "صلصة طماطم"],
+    "breadcrumbs": ["breadcrumbs", "chapelure", "بقسماط", "فتات الخبز"],
 }
 
 
@@ -139,6 +145,11 @@ DISPLAY = {
     "raisin":      {"fr": "raisins secs", "en": "raisins", "ar": "زبيب"},
     "olive":       {"fr": "olives", "en": "olives", "ar": "زيتون"},
     "potato_cake": {"fr": "galette de pomme de terre", "en": "potato cake", "ar": "أقراص البطاطس"},
+    "cream":       {"fr": "crème", "en": "cream", "ar": "كريمة"},
+    "stock":       {"fr": "bouillon", "en": "stock", "ar": "مرق"},
+    "wine":        {"fr": "vin", "en": "wine", "ar": "نبيذ"},
+    "tomato_paste":{"fr": "concentré de tomate", "en": "tomato paste", "ar": "معجون طماطم"},
+    "breadcrumbs": {"fr": "chapelure", "en": "breadcrumbs", "ar": "بقسماط"},
 }
 
 
@@ -146,8 +157,12 @@ DISPLAY = {
 UNIT_DISPLAY = {
     "g":   {"fr": "g", "en": "g", "ar": "جرام"},
     "kg":  {"fr": "kg", "en": "kg", "ar": "كيلوجرام"},
-    "ml":  {"fr": "ml", "en": "ml", "ar": "مل"},
+    "ml":  {"fr": "ml", "en": "ml", "ar": "مللتر"},
+    "cl":  {"fr": "cl", "en": "cl", "ar": "سنتيلتر"},
+    "dl":  {"fr": "dl", "en": "dl", "ar": "ديسيلتر"},
     "l":   {"fr": "l", "en": "l", "ar": "لتر"},
+    "cube":  {"fr": "cube", "en": "cube", "ar": "مكعب"},
+    "cubes": {"fr": "cubes", "en": "cubes", "ar": "مكعبات"},
     "gousse":  {"fr": "gousse", "en": "clove", "ar": "فص"},
     "gousses": {"fr": "gousses", "en": "cloves", "ar": "فصوص"},
     "clove":   {"fr": "gousse", "en": "clove", "ar": "فص"},
