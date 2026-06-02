@@ -84,3 +84,9 @@ other languages and stored, so switching language (FR/EN/AR) instantly shows the
 translated content. For recipes added before you set the key, open the recipe and
 press "Translate". Requires internet access on the device. Untranslated recipes
 simply show their original text.
+
+## What can I cook?
+The "What can I cook?" page (in the top nav) lets you list the ingredients you have
+on hand. RecipeBox then ranks YOUR saved recipes by how few ingredients are missing,
+shows exactly what you'd need to buy, and matches across languages (ail = garlic = ثوم).
+Tap the suggestion chips to quickly add ingredients you already use.
