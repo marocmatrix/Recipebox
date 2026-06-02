@@ -21,6 +21,7 @@ class Recipe(Base):
     difficulty = Column(String, default="")     # easy / medium / hard
     cuisine = Column(String, default="")
     translations = Column(Text, default="")     # JSON {"fr":{"title":..,"description":..}, "ar":{...}}
+    nutrition = Column(Text, default="")        # JSON {"calories":"270","protein":"5 g",...}
     created_at = Column(DateTime, default=datetime.utcnow)
 
     ingredients = relationship(
