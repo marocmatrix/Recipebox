@@ -4,36 +4,12 @@ Reads schema.org/Recipe data (JSON-LD) from a page — the same structured data
 most major recipe sites publish. Falls back gracefully if not present.
 """
 import json
-import html
-import re
 import httpx
 from bs4 import BeautifulSoup
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (compatible; RecipeBox/1.0; +https://github.com)"
 }
-
-
-def decode_text(s: str) -> str:
-    """Decode HTML entities, handling double-encoding (&amp;eacute; -> é).
-
-    Also strips any leftover HTML tags and collapses whitespace.
-    """
-    if not s:
-        return ""
-    # unescape repeatedly until stable (handles double/triple encoding)
-    prev = None
-    cur = s
-    for _ in range(3):
-        if cur == prev:
-            break
-        prev = cur
-        cur = html.unescape(cur)
-    # strip stray HTML tags
-    cur = re.sub(r"<[^>]+>", "", cur)
-    # collapse whitespace
-    cur = re.sub(r"\s+", " ", cur).strip()
-    return cur
 
 
 def _iso_duration_to_minutes(value):
@@ -69,7 +45,7 @@ def _find_recipe_node(data):
 
 
 def _as_text_list(value):
-    """Normalize instructions/ingredients into a list of strings (entity-decoded)."""
+    """Normalize instructions/ingredients into a list of strings."""
     out = []
     if isinstance(value, str):
         out.append(value.strip())
@@ -85,7 +61,7 @@ def _as_text_list(value):
                     txt = item.get("text") or item.get("name")
                     if txt:
                         out.append(txt.strip())
-    return [decode_text(x) for x in out if x and decode_text(x)]
+    return [x for x in out if x]
 
 
 def scrape(url: str) -> dict:
@@ -127,8 +103,8 @@ def scrape(url: str) -> dict:
         servings = 4
 
     return {
-        "title": decode_text(recipe.get("name", "")) or "Imported recipe",
-        "description": decode_text((recipe.get("description") or ""))[:2000],
+        "title": recipe.get("name", "Imported recipe"),
+        "description": (recipe.get("description") or "")[:2000],
         "servings": servings,
         "prep_minutes": _iso_duration_to_minutes(recipe.get("prepTime")),
         "cook_minutes": _iso_duration_to_minutes(recipe.get("cookTime")),
