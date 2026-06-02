@@ -277,17 +277,28 @@ def translate_recipe(db: Session, recipe, key: str, source_lang: str = None):
 
         # --- ingredients: build a full translated line per ingredient ---
         if recipe.ingredients:
-            # decide each ingredient's translated NAME: curated alias first, else DeepL
+            # decide each ingredient's translated NAME: curated alias first, else DeepL.
+            # Only use the curated word when the name is an EXACT alias (no extra
+            # descriptors like "vert"/"jaune"), so "poivron vert" keeps its color.
+            from .ingredient_aliases import _norm
             names_needing_deepl = []
             idx_needing = []
             curated = {}
             for idx, ing in enumerate(recipe.ingredients):
-                ckey = canonical_key(ing.name or ing.text or "")
+                raw = (ing.name or ing.text or "")
+                ckey = canonical_key(raw)
                 dn = display_name(ckey, lang) if ckey else ""
-                if dn:
+                # exact match? the normalized name equals one of the key's aliases
+                exact = False
+                if ckey and dn:
+                    aliases = {_norm(a) for a in ALIASES.get(ckey, [])}
+                    aliases.add(_norm(ckey))
+                    if _norm(raw) in aliases:
+                        exact = True
+                if exact:
                     curated[idx] = dn
                 else:
-                    names_needing_deepl.append(ing.name or ing.text or "")
+                    names_needing_deepl.append(raw)
                     idx_needing.append(idx)
             deepl_names = {}
             if names_needing_deepl:
