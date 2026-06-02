@@ -5,7 +5,7 @@ from datetime import date, datetime, timedelta
 
 import httpx
 from fastapi import FastAPI, Request, Depends, Form, UploadFile, File, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -46,6 +46,7 @@ _ensure_column("shopping_items", "quantity", "quantity INTEGER DEFAULT 1")
 _ensure_column("steps", "translations", "translations TEXT DEFAULT ''")
 _ensure_column("ingredients", "name_translations", "name_translations TEXT DEFAULT ''")
 _ensure_column("recipes", "translations", "translations TEXT DEFAULT ''")
+_ensure_column("recipes", "nutrition", "nutrition TEXT DEFAULT ''")
 
 
 def _upgrade_ingredient_structure():
@@ -578,6 +579,7 @@ def ctx(request: Request, **kwargs):
         "loc_text": loc_text,
         "loc_recipe": loc_recipe,
         "loc_ingredient": loc_ingredient,
+        "nutrition_of": (lambda recipe: _json.loads(recipe.nutrition) if recipe.nutrition else {}),
         **kwargs,
     }
 
@@ -885,6 +887,9 @@ async def import_url(request: Request, url: str = Form(...), db: Session = Depen
         servings=data["servings"], prep_minutes=data["prep_minutes"],
         cook_minutes=data["cook_minutes"], source_url=data["source_url"],
     )
+    nut = data.get("nutrition") or {}
+    if nut:
+        r.nutrition = _json.dumps(nut, ensure_ascii=False)
     r.image = await _download_image(data.get("image_url", ""))
     db.add(r)
     db.flush()
@@ -1103,6 +1108,84 @@ def translate_recipe_route(rid: int, request: Request, db: Session = Depends(get
             translate_recipe(db, r, key)  # auto-detect source language
         except Exception:
             pass
+    return RedirectResponse(f"{base}/recipe/{rid}", status_code=303)
+
+
+@app.get("/recipe/{rid}/translations", response_class=HTMLResponse)
+def edit_translations_page(rid: int, request: Request, db: Session = Depends(get_db)):
+    r = db.get(models.Recipe, rid)
+    base = getattr(request.state, "base", "")
+    if not r:
+        return RedirectResponse(f"{base}/", status_code=303)
+    # build editable structure: for each target lang, current stored values
+    rec_tr = {}
+    try:
+        rec_tr = _json.loads(r.translations) if r.translations else {}
+    except Exception:
+        rec_tr = {}
+    langs = [l for l in CONTENT_LANGS]  # show all; source rows will mirror originals
+    ing_tr = []
+    for ing in r.ingredients:
+        try:
+            m = _json.loads(ing.name_translations) if ing.name_translations else {}
+        except Exception:
+            m = {}
+        ing_tr.append(m)
+    step_tr = []
+    for s in r.steps:
+        try:
+            m = _json.loads(s.translations) if s.translations else {}
+        except Exception:
+            m = {}
+        step_tr.append(m)
+    return templates.TemplateResponse("translations.html", ctx(
+        request, r=r, langs=langs, rec_tr=rec_tr, ing_tr=ing_tr, step_tr=step_tr))
+
+
+@app.post("/recipe/{rid}/translations")
+async def save_translations(rid: int, request: Request, db: Session = Depends(get_db)):
+    r = db.get(models.Recipe, rid)
+    base = getattr(request.state, "base", "")
+    if not r:
+        return RedirectResponse(f"{base}/", status_code=303)
+    form = await request.form()
+    # recipe title/description per lang
+    rec_tr = {}
+    try:
+        rec_tr = _json.loads(r.translations) if r.translations else {}
+    except Exception:
+        rec_tr = {}
+    for lang in CONTENT_LANGS:
+        title = (form.get(f"title_{lang}") or "").strip()
+        desc = (form.get(f"desc_{lang}") or "").strip()
+        if title or desc:
+            rec_tr.setdefault(lang, {})
+            rec_tr[lang]["title"] = title
+            rec_tr[lang]["description"] = desc
+    r.translations = _json.dumps(rec_tr, ensure_ascii=False)
+    # ingredients
+    for idx, ing in enumerate(r.ingredients):
+        try:
+            m = _json.loads(ing.name_translations) if ing.name_translations else {}
+        except Exception:
+            m = {}
+        for lang in CONTENT_LANGS:
+            val = (form.get(f"ing_{idx}_{lang}") or "").strip()
+            if val:
+                m[lang] = val
+        ing.name_translations = _json.dumps(m, ensure_ascii=False)
+    # steps
+    for idx, s in enumerate(r.steps):
+        try:
+            m = _json.loads(s.translations) if s.translations else {}
+        except Exception:
+            m = {}
+        for lang in CONTENT_LANGS:
+            val = (form.get(f"step_{idx}_{lang}") or "").strip()
+            if val:
+                m[lang] = val
+        s.translations = _json.dumps(m, ensure_ascii=False)
+    db.commit()
     return RedirectResponse(f"{base}/recipe/{rid}", status_code=303)
 
 
@@ -1460,12 +1543,11 @@ def set_language(request: Request, language: str = Form(...), db: Session = Depe
 
 
 @app.get("/settings", response_class=HTMLResponse)
-def settings_page(request: Request, saved: int = 0, db: Session = Depends(get_db)):
+def settings_page(request: Request, saved: int = 0, restored: int = -1, db: Session = Depends(get_db)):
     deepl_key = get_setting(db, "deepl_key", "")
-    # show only a masked hint that a key is set
     has_key = bool(deepl_key)
     return templates.TemplateResponse(
-        "settings.html", ctx(request, saved=bool(saved), has_key=has_key))
+        "settings.html", ctx(request, saved=bool(saved), has_key=has_key, restored=restored))
 
 
 @app.post("/settings")
@@ -1479,6 +1561,84 @@ def settings_save(request: Request, language: str = Form(...),
         set_setting(db, "deepl_key", deepl_key.strip())
     base = getattr(request.state, "base", "")
     return RedirectResponse(f"{base}/settings?saved=1", status_code=303)
+
+
+# ====================  EXPORT / BACKUP  ===================================
+def _recipe_to_dict(r) -> dict:
+    return {
+        "title": r.title, "description": r.description, "servings": r.servings,
+        "prep_minutes": r.prep_minutes, "cook_minutes": r.cook_minutes,
+        "tags": r.tags, "source_url": r.source_url, "favorite": bool(r.favorite),
+        "difficulty": r.difficulty, "cuisine": r.cuisine,
+        "translations": r.translations, "nutrition": r.nutrition,
+        "ingredients": [
+            {"text": i.text, "quantity": i.quantity, "unit": i.unit,
+             "name": i.name, "image": i.image,
+             "name_translations": i.name_translations}
+            for i in r.ingredients
+        ],
+        "steps": [
+            {"text": s.text, "timer_seconds": s.timer_seconds,
+             "image": s.image, "translations": s.translations}
+            for s in r.steps
+        ],
+    }
+
+
+@app.get("/export")
+def export_all(db: Session = Depends(get_db)):
+    """Download all recipes as a JSON backup."""
+    recipes = [_recipe_to_dict(r) for r in db.query(models.Recipe).all()]
+    payload = {"version": 1, "recipes": recipes}
+    body = _json.dumps(payload, ensure_ascii=False, indent=2)
+    return Response(
+        content=body, media_type="application/json",
+        headers={"Content-Disposition": 'attachment; filename="recipebox-backup.json"'},
+    )
+
+
+@app.post("/import-backup")
+async def import_backup(request: Request, db: Session = Depends(get_db)):
+    """Restore recipes from an uploaded JSON backup (adds, does not wipe)."""
+    base = getattr(request.state, "base", "")
+    form = await request.form()
+    up = form.get("backup")
+    if up is None or not hasattr(up, "read"):
+        return RedirectResponse(f"{base}/settings?restored=0", status_code=303)
+    try:
+        raw = await up.read()
+        payload = _json.loads(raw.decode("utf-8"))
+        recipes = payload.get("recipes", []) if isinstance(payload, dict) else []
+    except Exception:
+        return RedirectResponse(f"{base}/settings?restored=0", status_code=303)
+    count = 0
+    for rd in recipes:
+        try:
+            r = models.Recipe(
+                title=rd.get("title", "Untitled"), description=rd.get("description", ""),
+                servings=rd.get("servings", 4), prep_minutes=rd.get("prep_minutes", 0),
+                cook_minutes=rd.get("cook_minutes", 0), tags=rd.get("tags", ""),
+                source_url=rd.get("source_url", ""), favorite=bool(rd.get("favorite")),
+                difficulty=rd.get("difficulty", ""), cuisine=rd.get("cuisine", ""),
+                translations=rd.get("translations", ""), nutrition=rd.get("nutrition", ""),
+            )
+            db.add(r); db.flush()
+            for i, ing in enumerate(rd.get("ingredients", [])):
+                db.add(models.Ingredient(
+                    recipe_id=r.id, position=i, text=ing.get("text", ""),
+                    quantity=ing.get("quantity", ""), unit=ing.get("unit", ""),
+                    name=ing.get("name", ""), image=ing.get("image", ""),
+                    name_translations=ing.get("name_translations", "")))
+            for i, stp in enumerate(rd.get("steps", [])):
+                db.add(models.Step(
+                    recipe_id=r.id, position=i, text=stp.get("text", ""),
+                    timer_seconds=stp.get("timer_seconds", 0), image=stp.get("image", ""),
+                    translations=stp.get("translations", "")))
+            count += 1
+        except Exception:
+            continue
+    db.commit()
+    return RedirectResponse(f"{base}/settings?restored={count}", status_code=303)
 
 
 if __name__ == "__main__":
