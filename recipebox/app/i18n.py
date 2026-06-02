@@ -178,6 +178,20 @@ TRANSLATIONS = {
     "view_import":     {"en": "View & import", "fr": "Voir et importer", "ar": "عرض واستيراد"},
     "import_this":     {"en": "Import this recipe", "fr": "Importer cette recette", "ar": "استيراد هذه الوصفة"},
     "steps":           {"en": "Steps", "fr": "Étapes", "ar": "الخطوات"},
+    "nutrition":       {"en": "Nutrition", "fr": "Nutrition", "ar": "القيم الغذائية"},
+    "nut_calories":    {"en": "Calories", "fr": "Calories", "ar": "سعرات"},
+    "nut_protein":     {"en": "Protein", "fr": "Protéines", "ar": "بروتين"},
+    "nut_fat":         {"en": "Fat", "fr": "Lipides", "ar": "دهون"},
+    "nut_carbs":       {"en": "Carbs", "fr": "Glucides", "ar": "كربوهيدرات"},
+    "nut_fiber":       {"en": "Fiber", "fr": "Fibres", "ar": "ألياف"},
+    "nut_sugar":       {"en": "Sugar", "fr": "Sucre", "ar": "سكر"},
+    "nut_sodium":      {"en": "Sodium", "fr": "Sodium", "ar": "صوديوم"},
+    "nut_per_serving": {"en": "per serving", "fr": "par portion", "ar": "لكل حصة"},
+    "export_backup":   {"en": "Export / backup", "fr": "Exporter / sauvegarder", "ar": "تصدير / نسخ احتياطي"},
+    "export_all":      {"en": "Export all recipes (JSON)", "fr": "Exporter toutes les recettes (JSON)", "ar": "تصدير كل الوصفات (JSON)"},
+    "import_backup":   {"en": "Restore from backup (JSON)", "fr": "Restaurer depuis une sauvegarde (JSON)", "ar": "استعادة من نسخة احتياطية (JSON)"},
+    "edit_translations":{"en": "Edit translations", "fr": "Modifier les traductions", "ar": "تعديل الترجمات"},
+    "save":            {"en": "Save", "fr": "Enregistrer", "ar": "حفظ"},
 }
 
 
