@@ -51,6 +51,20 @@
   {% else %}
   <p style="color:var(--muted)">{{ t('no_matches') }}</p>
   {% endif %}
+
+  {% if discover %}
+  <h2 style="margin-top:28px">{{ t('discover_title') }}</h2>
+  <p style="color:var(--muted);max-width:640px">{{ t('discover_intro') }}</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;max-width:720px">
+    {% for d in discover %}
+    <a href="{{ base }}/discover/{{ d.id }}" class="card"
+       style="text-decoration:none;overflow:hidden;display:flex;flex-direction:column">
+      <span style="height:110px;background:#f3ebe0 url('{{ d.image }}') center/cover"></span>
+      <span style="padding:10px;font-weight:600;font-size:.92rem">{{ d.title }}</span>
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
 {% endif %}
 
 <style>

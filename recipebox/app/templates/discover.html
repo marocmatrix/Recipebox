@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}{{ r.title }} · RecipeBox{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>{{ r.title }}</h1>
+  <div class="spacer"></div>
+  <form method="post" action="{{ base }}/discover/{{ meal_id }}/import" style="display:inline">
+    <button class="btn" type="submit">⬇ {{ t('import_this') }}</button>
+  </form>
+</div>
+{% if r.description %}<p style="color:var(--muted)">{{ r.description }}</p>{% endif %}
+{% if r.image_url %}
+<img src="{{ r.image_url }}" alt="" style="max-width:420px;width:100%;border-radius:14px;margin:12px 0">
+{% endif %}
+
+<h2>{{ t('ingredients') }}</h2>
+<ul style="list-style:none;padding:0;margin:0;max-width:560px">
+  {% for ing in r.ingredients %}
+  <li style="padding:8px 0;border-bottom:1px solid var(--line)">{{ ing }}</li>
+  {% endfor %}
+</ul>
+
+<h2 style="margin-top:22px">{{ t('steps') }}</h2>
+<ol style="max-width:640px;line-height:1.6">
+  {% for s in r.steps %}<li style="margin-bottom:8px">{{ s }}</li>{% endfor %}
+</ol>
+
+<div style="margin:22px 0">
+  <form method="post" action="{{ base }}/discover/{{ meal_id }}/import">
+    <button class="btn" type="submit">⬇ {{ t('import_this') }}</button>
+  </form>
+</div>
+{% endblock %}
